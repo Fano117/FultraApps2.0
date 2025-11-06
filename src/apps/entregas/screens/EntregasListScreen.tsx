@@ -1,0 +1,267 @@
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  StyleSheet,
+  FlatList,
+  RefreshControl,
+  TouchableOpacity,
+  Alert,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Card, Typography, Badge, colors, spacing, borderRadius } from '@/design-system';
+import { useAppSelector, useAppDispatch } from '@/shared/hooks';
+import { fetchEmbarques, loadLocalData } from '../store/entregasSlice';
+import { ClienteEntregaDTO, EntregaDTO } from '../models';
+import { EntregasStackParamList } from '@/navigation/types';
+
+type NavigationProp = NativeStackNavigationProp<EntregasStackParamList, 'EntregasList'>;
+
+const EntregasListScreen: React.FC = () => {
+  const navigation = useNavigation<NavigationProp>();
+  const dispatch = useAppDispatch();
+  const { clientes, loading, error } = useAppSelector((state) => state.entregas);
+  const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    await dispatch(loadLocalData());
+    await dispatch(fetchEmbarques());
+  };
+
+  const toggleClient = (clienteKey: string) => {
+    const newExpanded = new Set(expandedClients);
+    if (newExpanded.has(clienteKey)) {
+      newExpanded.delete(clienteKey);
+    } else {
+      newExpanded.add(clienteKey);
+    }
+    setExpandedClients(newExpanded);
+  };
+
+  const handleEntregaPress = (cliente: ClienteEntregaDTO, entrega: EntregaDTO) => {
+    const clienteCarga = `${cliente.carga}-${cliente.cuentaCliente}`;
+    navigation.navigate('EntregaDetail', { clienteCarga, entrega });
+  };
+
+  const getEstadoColor = (estado: string) => {
+    switch (estado.toUpperCase()) {
+      case 'PENDIENTE':
+        return 'warning';
+      case 'COMPLETADO':
+        return 'success';
+      case 'CANCELADO':
+        return 'error';
+      default:
+        return 'neutral';
+    }
+  };
+
+  const renderEntrega = (entrega: EntregaDTO, cliente: ClienteEntregaDTO) => {
+    const totalArticulos = entrega.articulos.length;
+    const totalCantidad = entrega.articulos.reduce(
+      (sum, art) => sum + art.cantidadProgramada,
+      0
+    );
+
+    return (
+      <TouchableOpacity
+        key={`${entrega.ordenVenta}-${entrega.folio}`}
+        onPress={() => handleEntregaPress(cliente, entrega)}
+        activeOpacity={0.7}
+      >
+        <Card variant="outline" padding="medium" style={styles.entregaCard}>
+          <View style={styles.entregaHeader}>
+            <View style={styles.entregaInfo}>
+              <Typography variant="subtitle1">{entrega.folio}</Typography>
+              <Typography variant="caption" color="secondary">
+                OV: {entrega.ordenVenta}
+              </Typography>
+            </View>
+            <Badge variant={getEstadoColor(entrega.estado) as any} size="small">
+              {entrega.estado}
+            </Badge>
+          </View>
+
+          <View style={styles.entregaDetails}>
+            <View style={styles.detailRow}>
+              <Ionicons name="cube-outline" size={16} color={colors.text.secondary} />
+              <Typography variant="body2" color="secondary">
+                {totalArticulos} artículo{totalArticulos !== 1 ? 's' : ''}
+              </Typography>
+            </View>
+            <View style={styles.detailRow}>
+              <Ionicons name="albums-outline" size={16} color={colors.text.secondary} />
+              <Typography variant="body2" color="secondary">
+                Cantidad: {totalCantidad}
+              </Typography>
+            </View>
+            <View style={styles.detailRow}>
+              <Ionicons name="swap-horizontal-outline" size={16} color={colors.text.secondary} />
+              <Typography variant="body2" color="secondary">
+                {entrega.tipoEntrega}
+              </Typography>
+            </View>
+          </View>
+
+          <View style={styles.chevronContainer}>
+            <Ionicons name="chevron-forward" size={20} color={colors.primary[600]} />
+          </View>
+        </Card>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderCliente = ({ item }: { item: ClienteEntregaDTO }) => {
+    const clienteKey = `${item.carga}-${item.cuentaCliente}`;
+    const isExpanded = expandedClients.has(clienteKey);
+    const totalEntregas = item.entregas.length;
+
+    return (
+      <View style={styles.clienteContainer}>
+        <TouchableOpacity onPress={() => toggleClient(clienteKey)} activeOpacity={0.8}>
+          <Card variant="elevated" padding="medium" style={styles.clienteCard}>
+            <View style={styles.clienteHeader}>
+              <View style={styles.clienteInfo}>
+                <Typography variant="h6">{item.cliente}</Typography>
+                <Typography variant="caption" color="secondary">
+                  Cuenta: {item.cuentaCliente} | Carga: {item.carga}
+                </Typography>
+                <View style={styles.locationRow}>
+                  <Ionicons name="location-outline" size={14} color={colors.text.secondary} />
+                  <Typography variant="caption" color="secondary" style={styles.direccion}>
+                    {item.direccionEntrega}
+                  </Typography>
+                </View>
+              </View>
+              <View style={styles.clienteActions}>
+                <Badge variant="info" size="medium">
+                  {totalEntregas}
+                </Badge>
+                <Ionicons
+                  name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={24}
+                  color={colors.primary[600]}
+                />
+              </View>
+            </View>
+          </Card>
+        </TouchableOpacity>
+
+        {isExpanded && (
+          <View style={styles.entregasContainer}>
+            {item.entregas.map((entrega) => renderEntrega(entrega, item))}
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  return (
+    <SafeAreaView style={styles.container} edges={['bottom']}>
+      <FlatList
+        data={clientes}
+        renderItem={renderCliente}
+        keyExtractor={(item) => `${item.carga}-${item.cuentaCliente}`}
+        contentContainerStyle={styles.listContent}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={loadData} />}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Ionicons name="cube-outline" size={64} color={colors.neutral[300]} />
+            <Typography variant="h6" color="secondary" align="center" style={styles.emptyText}>
+              No hay entregas pendientes
+            </Typography>
+            <Typography variant="body2" color="secondary" align="center">
+              Desliza hacia abajo para actualizar
+            </Typography>
+          </View>
+        }
+      />
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background.secondary,
+  },
+  listContent: {
+    padding: spacing[4],
+    paddingBottom: spacing[10],
+  },
+  clienteContainer: {
+    marginBottom: spacing[4],
+  },
+  clienteCard: {
+    marginBottom: spacing[2],
+  },
+  clienteHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  clienteInfo: {
+    flex: 1,
+    gap: spacing[1],
+  },
+  clienteActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[1],
+    marginTop: spacing[1],
+  },
+  direccion: {
+    flex: 1,
+  },
+  entregasContainer: {
+    gap: spacing[2],
+    paddingLeft: spacing[4],
+  },
+  entregaCard: {
+    position: 'relative',
+  },
+  entregaHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing[3],
+  },
+  entregaInfo: {
+    flex: 1,
+  },
+  entregaDetails: {
+    gap: spacing[2],
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+  },
+  chevronContainer: {
+    position: 'absolute',
+    right: spacing[4],
+    bottom: spacing[4],
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: spacing[20],
+  },
+  emptyText: {
+    marginTop: spacing[4],
+    marginBottom: spacing[2],
+  },
+});
+
+export default EntregasListScreen;
