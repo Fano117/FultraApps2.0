@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Image, StyleSheet, ViewStyle } from 'react-native';
-import { colors, typography, spacing, borderRadius } from '../../theme';
+import { colors, borderRadius } from '../../theme';
 
 type AvatarSize = 'small' | 'medium' | 'large' | 'xlarge';
 
@@ -19,12 +19,12 @@ export const Avatar: React.FC<AvatarProps> = ({
   backgroundColor = colors.primary[500],
   style,
 }) => {
-  const containerStyle: ViewStyle = [
+  const containerStyle = [
     styles.base,
     styles[size],
     !source && { backgroundColor },
     style,
-  ].filter(Boolean) as ViewStyle;
+  ];
 
   const getInitials = (fullName: string): string => {
     const names = fullName.trim().split(' ');
@@ -36,9 +36,11 @@ export const Avatar: React.FC<AvatarProps> = ({
     <View style={containerStyle}>
       {source ? (
         <Image source={source} style={styles.image} />
-      ) : name ? (
+      ) : name && typeof name === 'string' && name.trim() ? (
         <Text style={[styles.text, styles[`text_${size}`]]}>{getInitials(name)}</Text>
-      ) : null}
+      ) : (
+        <Text style={[styles.text, styles[`text_${size}`]]}>?</Text>
+      )}
     </View>
   );
 };

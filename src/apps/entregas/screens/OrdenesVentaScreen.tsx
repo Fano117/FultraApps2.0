@@ -10,7 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Card, Typography, Badge, Button, colors, spacing, borderRadius } from '@/design-system';
-import { EntregaDTO } from '../models';
+import { EntregaDTO, EstadoEntrega } from '../models';
 import { EntregasStackParamList } from '@/navigation/types';
 
 type RouteParams = RouteProp<EntregasStackParamList, 'OrdenesVenta'>;
@@ -26,12 +26,15 @@ const OrdenesVentaScreen: React.FC = () => {
   };
 
   const getEstadoColor = (estado: string) => {
-    switch (estado.toUpperCase()) {
-      case 'PENDIENTE':
+    switch (estado) {
+      case EstadoEntrega.PENDIENTE:
+      case EstadoEntrega.PENDIENTE_ENVIO:
         return 'warning';
-      case 'COMPLETADO':
+      case EstadoEntrega.ENTREGADO_COMPLETO:
         return 'success';
-      case 'CANCELADO':
+      case EstadoEntrega.ENTREGADO_PARCIAL:
+        return 'info';
+      case EstadoEntrega.NO_ENTREGADO:
         return 'error';
       default:
         return 'neutral';
@@ -114,7 +117,7 @@ const OrdenesVentaScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text.primary} />

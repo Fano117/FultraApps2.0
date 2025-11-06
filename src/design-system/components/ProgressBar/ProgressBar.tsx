@@ -23,7 +23,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   label,
   height,
   color = colors.primary[600],
-  backgroundColor = colors.background.surface,
+  backgroundColor = colors.white,
   style,
   variant = 'default',
 }) => {

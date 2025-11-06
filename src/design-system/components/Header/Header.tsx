@@ -35,7 +35,7 @@ export const Header: React.FC<HeaderProps> = ({
           <Avatar
             source={avatarUrl ? { uri: avatarUrl } : undefined}
             size="medium"
-            fallbackText={userName ? userName.charAt(0) : 'U'}
+            name={userName || 'U'}
           />
         </TouchableOpacity>
 
@@ -56,11 +56,12 @@ export const Header: React.FC<HeaderProps> = ({
           <Ionicons name="notifications-outline" size={24} color={colors.text.primary} />
           {notificationCount > 0 && (
             <Badge
-              value={notificationCount}
-              variant="danger"
+              variant="error"
               size="small"
               style={styles.notificationBadge}
-            />
+            >
+              {notificationCount > 99 ? '99+' : String(notificationCount)}
+            </Badge>
           )}
         </TouchableOpacity>
 
@@ -85,7 +86,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
-    backgroundColor: colors.background.default,
+    backgroundColor: colors.background.primary,
   },
   transparent: {
     backgroundColor: 'transparent',
@@ -117,7 +118,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.background.surface,
+    backgroundColor: colors.white,
     justifyContent: 'center',
     alignItems: 'center',
     ...shadows.sm,

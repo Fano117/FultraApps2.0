@@ -92,14 +92,14 @@ const styles = StyleSheet.create({
     gap: spacing[2],
   },
   label: {
-    ...typography.body,
+    ...typography.body1,
     color: colors.text.primary,
     fontWeight: '500',
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background.surface,
+    backgroundColor: colors.white,
     borderRadius: borderRadius.xl,
     paddingHorizontal: spacing[6],
     paddingVertical: spacing[4],

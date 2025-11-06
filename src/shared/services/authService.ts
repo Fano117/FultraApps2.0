@@ -1,44 +1,31 @@
-import { authorize, refresh, logout, AuthConfiguration } from 'react-native-app-auth';
+import * as AuthSession from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from 'jwt-decode';
-import { Platform } from 'react-native';
 import { BASE_LOGIN, APP_AUTH_REDIRECT_SCHEME } from '../config';
+
+WebBrowser.maybeCompleteAuthSession();
 
 const TOKEN_KEY = 'token';
 const ACCESS_TOKEN_KEY = 'accessToken';
 const REFRESH_TOKEN_KEY = 'refreshToken';
 
-const __DEV__ = process.env.NODE_ENV === 'development';
-
-const config: AuthConfiguration = {
-  issuer: BASE_LOGIN,
-  clientId: 'fultraTrackReactNative',
-  clientSecret: 'Fu1traTr9ck2025#$',
-  redirectUrl: `${APP_AUTH_REDIRECT_SCHEME}:/oauth2redirect`,
-  scopes: ['openid', 'profile', 'email', 'api_FultraTrack'],
-  serviceConfiguration: {
-    authorizationEndpoint: `${BASE_LOGIN}/connect/authorize`,
-    tokenEndpoint: `${BASE_LOGIN}/connect/token`,
-    endSessionEndpoint: `${BASE_LOGIN}/connect/signout`,
-    revocationEndpoint: `${BASE_LOGIN}/connect/revocation`,
-  },
-  additionalParameters: {
-    prompt: 'login',
-  },
-  ...Platform.select({
-    ios: {
-      preferEphemeralSession: true,
-    },
-    android: {
-      customTabs: false,
-      useNonce: false,
-      usePKCE: true,
-      warmAndPrefetchChrome: false,
-      skipCodeExchange: false,
-      dangerouslyAllowInsecureHttpRequests: __DEV__,
-    },
-  }),
+const discovery = {
+  authorizationEndpoint: `${BASE_LOGIN}/connect/authorize`,
+  tokenEndpoint: `${BASE_LOGIN}/connect/token`,
+  endSessionEndpoint: `${BASE_LOGIN}/connect/signout`,
+  revocationEndpoint: `${BASE_LOGIN}/connect/revocation`,
 };
+
+const clientId = 'fultraTrackReactNative';
+const clientSecret = 'Fu1traTr9ck2025#$';
+
+const redirectUri = AuthSession.makeRedirectUri({
+  scheme: APP_AUTH_REDIRECT_SCHEME,
+  path: 'oauth2redirect',
+});
+
+const scopes = ['openid', 'profile', 'email', 'api_FultraTrack'];
 
 export interface UserData {
   sub: string;
@@ -50,13 +37,66 @@ export interface UserData {
 class AuthService {
   async signIn(): Promise<boolean> {
     try {
-      const authState = await authorize(config);
-      await AsyncStorage.setItem(TOKEN_KEY, authState.idToken);
-      await AsyncStorage.setItem(ACCESS_TOKEN_KEY, authState.accessToken);
-      await AsyncStorage.setItem(REFRESH_TOKEN_KEY, authState.refreshToken ?? '');
+      console.log('Iniciando proceso de autenticación...');
+      console.log('Redirect URI:', redirectUri);
+
+      // Build authorization request - Expo maneja automáticamente PKCE
+      const authRequest = new AuthSession.AuthRequest({
+        responseType: AuthSession.ResponseType.Code,
+        clientId,
+        redirectUri,
+        scopes,
+        prompt: AuthSession.Prompt.Login,
+        usePKCE: true,
+        codeChallengeMethod: AuthSession.CodeChallengeMethod.S256,
+      });
+
+      // Prompt user for authentication
+      const result = await authRequest.promptAsync(discovery);
+
+      if (result.type !== 'success') {
+        if (result.type === 'cancel') {
+          throw new Error('Inicio de sesión cancelado');
+        }
+        throw new Error(`Error de autenticación: ${result.type}`);
+      }
+
+      // Exchange authorization code for tokens
+      const tokenResult = await AuthSession.exchangeCodeAsync(
+        {
+          clientId,
+          clientSecret,
+          code: result.params.code,
+          redirectUri,
+          extraParams: {
+            code_verifier: authRequest.codeVerifier || '',
+          },
+        },
+        discovery
+      );
+
+      if (!tokenResult.accessToken) {
+        throw new Error('No se recibió un token de acceso válido');
+      }
+
+      // Store tokens
+      await AsyncStorage.setItem(ACCESS_TOKEN_KEY, tokenResult.accessToken);
+      await AsyncStorage.setItem(REFRESH_TOKEN_KEY, tokenResult.refreshToken ?? '');
+
+      if (tokenResult.idToken) {
+        await AsyncStorage.setItem(TOKEN_KEY, tokenResult.idToken);
+      }
+
+      console.log('Autenticación exitosa');
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error signing in:', error);
+
+      // Re-lanzar el error para que pueda ser manejado en el componente
+      if (error?.message?.includes('authorize') || error?.message?.includes('cancelled') || error?.message?.includes('configuración')) {
+        throw error;
+      }
+
       return false;
     }
   }
@@ -71,13 +111,23 @@ class AuthService {
         return null;
       }
 
-      const newAuthState = await refresh(config, { refreshToken });
+      const tokenResult = await AuthSession.refreshAsync(
+        {
+          clientId,
+          clientSecret,
+          refreshToken,
+        },
+        discovery
+      );
 
-      await AsyncStorage.setItem(ACCESS_TOKEN_KEY, newAuthState.accessToken);
-      await AsyncStorage.setItem(TOKEN_KEY, newAuthState.idToken);
-      await AsyncStorage.setItem(REFRESH_TOKEN_KEY, newAuthState.refreshToken ?? '');
+      await AsyncStorage.setItem(ACCESS_TOKEN_KEY, tokenResult.accessToken);
+      await AsyncStorage.setItem(REFRESH_TOKEN_KEY, tokenResult.refreshToken ?? '');
 
-      return newAuthState.accessToken;
+      if (tokenResult.idToken) {
+        await AsyncStorage.setItem(TOKEN_KEY, tokenResult.idToken);
+      }
+
+      return tokenResult.accessToken;
     } catch (error) {
       console.error('Error refreshing token:', error);
       await this.clearTokens();
@@ -91,10 +141,18 @@ class AuthService {
 
       if (token) {
         try {
-          await logout(config, {
-            idToken: token,
-            postLogoutRedirectUrl: `${APP_AUTH_REDIRECT_SCHEME}:/oauth2redirect`,
-          });
+          // Revoke the token with the identity server
+          const revokeUrl = discovery.revocationEndpoint;
+          if (revokeUrl) {
+            await AuthSession.revokeAsync(
+              {
+                clientId,
+                clientSecret,
+                token,
+              },
+              discovery
+            );
+          }
         } catch (logoutError) {
           console.warn('Error logging out from server, continuing with local cleanup:', logoutError);
         }

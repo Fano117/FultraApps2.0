@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
   },
   default: {
-    backgroundColor: colors.background.surface,
+    backgroundColor: colors.white,
     ...shadows.sm,
   },
   primary: {

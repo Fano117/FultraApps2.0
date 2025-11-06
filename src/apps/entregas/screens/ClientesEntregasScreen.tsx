@@ -124,7 +124,7 @@ const ClientesEntregasScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <Typography variant="h5">Clientes - Entregas</Typography>
       </View>

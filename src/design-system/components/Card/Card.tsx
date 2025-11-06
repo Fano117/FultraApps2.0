@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, ViewStyle, TouchableOpacity, TouchableOpacityProps } from 'react-native';
+import { View, StyleSheet, ViewStyle, TouchableOpacity, TouchableOpacityProps, ColorValue } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, borderRadius, shadows } from '../../theme';
 
@@ -11,7 +11,7 @@ export interface CardProps extends Omit<TouchableOpacityProps, 'style'> {
   padding?: CardPadding;
   children: React.ReactNode;
   style?: ViewStyle;
-  gradient?: string[];
+  gradient?: readonly [ColorValue, ColorValue, ...ColorValue[]];
   onPress?: () => void;
 }
 
@@ -24,12 +24,12 @@ export const Card: React.FC<CardProps> = ({
   onPress,
   ...props
 }) => {
-  const containerStyle: ViewStyle = [
+  const containerStyle = [
     styles.base,
     styles[variant],
-    styles[`padding_${padding}`],
+    styles[`padding_${padding}` as keyof typeof styles],
     style,
-  ].filter(Boolean) as ViewStyle;
+  ].filter(Boolean);
 
   if (variant === 'gradient' && gradient) {
     const content = <View style={styles.gradientContent}>{children}</View>;

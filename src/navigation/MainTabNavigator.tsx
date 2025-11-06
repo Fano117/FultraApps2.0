@@ -7,6 +7,7 @@ import HomeScreen from '@/screens/home/HomeScreen';
 import EntregasNavigator from './EntregasNavigator';
 import PendientesScreen from '@/apps/entregas/screens/PendientesScreen';
 import ProfileScreen from '@/screens/profile/ProfileScreen';
+import NotificationsScreen from '@/screens/notifications/NotificationsScreen';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -68,6 +69,13 @@ const MainTabNavigator: React.FC = () => {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person" size={size} color={color} />
           ),
+        }}
+      />
+      <Tab.Screen
+        name="Notifications"
+        component={NotificationsScreen}
+        options={{
+          tabBarButton: () => null,
         }}
       />
     </Tab.Navigator>

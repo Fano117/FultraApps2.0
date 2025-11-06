@@ -1,12 +1,15 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { Card, Typography, Avatar, colors, spacing, borderRadius, shadows } from '@/design-system';
+import { Card, Typography, Avatar, Badge, colors, spacing, borderRadius, shadows } from '@/design-system';
 import { useAppSelector, useAppDispatch } from '@/shared/hooks';
 import { fetchEmbarques } from '@/apps/entregas/store/entregasSlice';
+
+const { width } = Dimensions.get('window');
+const CARD_WIDTH = (width - spacing[6] * 2 - spacing[4]) / 2;
 
 const HomeScreen: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -29,23 +32,50 @@ const HomeScreen: React.FC = () => {
     {
       id: 'entregas',
       name: 'Entregas',
+      description: 'Gestión de entregas',
       icon: 'cube',
-      color: colors.primary[600],
+      gradient: [colors.primary[500], colors.primary[700]] as const,
       enabled: true,
       count: totalEntregas,
     },
     {
       id: 'garantias',
       name: 'Garantías',
+      description: 'Control de garantías',
       icon: 'shield-checkmark',
-      color: colors.neutral[400],
+      gradient: [colors.info[500], colors.info[700]] as const,
       enabled: false,
     },
     {
       id: 'reclamos',
       name: 'Reclamos',
+      description: 'Gestión de reclamos',
       icon: 'alert-circle',
-      color: colors.neutral[400],
+      gradient: [colors.warning[500], colors.warning[700]] as const,
+      enabled: false,
+    },
+    {
+      id: 'inventario',
+      name: 'Inventario',
+      description: 'Control de stock',
+      icon: 'layers',
+      gradient: [colors.success[500], colors.success[700]] as const,
+      enabled: false,
+    },
+    {
+      id: 'ventas',
+      name: 'Ventas',
+      description: 'Registro de ventas',
+      icon: 'cart',
+      gradient: [colors.secondary[500], colors.secondary[700]] as const,
+      enabled: false,
+    },
+    {
+      id: 'reportes',
+      name: 'Reportes',
+      description: 'Analytics y reportes',
+      icon: 'stats-chart',
+      gradient: [colors.card.blue, colors.card.blueDark] as const,
       enabled: false,
     },
   ];
@@ -61,7 +91,9 @@ const HomeScreen: React.FC = () => {
       <ScrollView
         style={styles.scrollView}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={loadData} />}
+        showsVerticalScrollIndicator={false}
       >
+        {/* Header con gradiente */}
         <LinearGradient
           colors={[colors.primary[500], colors.primary[600]]}
           style={styles.header}
@@ -78,71 +110,90 @@ const HomeScreen: React.FC = () => {
             <Avatar name={user?.name} size="large" />
           </View>
 
-          <View style={styles.statsContainer}>
-            <Card variant="default" padding="medium" style={styles.statCard}>
-              <View style={styles.statContent}>
-                <Ionicons name="cube-outline" size={24} color={colors.primary[600]} />
-                <View style={styles.statText}>
-                  <Typography variant="h3">{totalEntregas}</Typography>
-                  <Typography variant="caption" color="secondary">
-                    Entregas pendientes
-                  </Typography>
-                </View>
-              </View>
-            </Card>
-
-            {pendientesSinc > 0 && (
+          {/* Estadísticas */}
+          {pendientesSinc > 0 && (
+            <View style={styles.statsContainer}>
               <Card variant="default" padding="medium" style={styles.statCard}>
                 <View style={styles.statContent}>
-                  <Ionicons name="sync-outline" size={24} color={colors.warning[600]} />
+                  <View style={[styles.statIconContainer, { backgroundColor: colors.warning[50] }]}>
+                    <Ionicons name="sync-outline" size={28} color={colors.warning[600]} />
+                  </View>
                   <View style={styles.statText}>
-                    <Typography variant="h3">{pendientesSinc}</Typography>
+                    <Typography variant="h2" style={styles.statNumber}>
+                      {pendientesSinc}
+                    </Typography>
                     <Typography variant="caption" color="secondary">
                       Pendientes de sincronizar
                     </Typography>
                   </View>
                 </View>
               </Card>
-            )}
-          </View>
+            </View>
+          )}
         </LinearGradient>
 
+        {/* Contenido */}
         <View style={styles.content}>
-          <Typography variant="h5" style={styles.sectionTitle}>
-            Aplicaciones
-          </Typography>
+          <View style={styles.sectionHeader}>
+            <Typography variant="h5" style={styles.sectionTitle}>
+              Aplicaciones
+            </Typography>
+            <Typography variant="caption" color="secondary">
+              {apps.filter(app => app.enabled).length} de {apps.length} activas
+            </Typography>
+          </View>
 
+          {/* Grid de aplicaciones mejorado */}
           <View style={styles.appsGrid}>
             {apps.map((app) => (
               <TouchableOpacity
                 key={app.id}
                 onPress={() => app.enabled && handleAppPress(app.id)}
                 disabled={!app.enabled}
-                activeOpacity={0.7}
+                activeOpacity={0.8}
+                style={styles.appCardWrapper}
               >
                 <Card
                   variant="elevated"
-                  padding="large"
-                  style={[styles.appCard, !app.enabled && styles.appCardDisabled]}
+                  padding="none"
                 >
-                  <View style={[styles.appIcon, { backgroundColor: app.color }]}>
-                    <Ionicons name={app.icon as any} size={32} color={colors.white} />
+                  <LinearGradient
+                    colors={app.gradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.appGradient}
+                  >
+                    <View style={styles.appIconContainer}>
+                      <Ionicons name={app.icon as any} size={40} color={colors.white} />
+                    </View>
+                  </LinearGradient>
+
+                  <View style={styles.appInfo}>
+                    <Typography variant="subtitle1" style={styles.appName} numberOfLines={1}>
+                      {app.name}
+                    </Typography>
+                    <Typography variant="caption" color="secondary" numberOfLines={1}>
+                      {app.description}
+                    </Typography>
                   </View>
-                  <Typography variant="subtitle1" align="center" style={styles.appName}>
-                    {app.name}
-                  </Typography>
-                  {app.count !== undefined && (
+
+                  {/* Badge de contador */}
+                  {app.count !== undefined && app.count > 0 && (
                     <View style={styles.appBadge}>
-                      <Typography variant="caption" color="inverse">
+                      <Badge variant="error" size="small">
                         {app.count}
-                      </Typography>
+                      </Badge>
                     </View>
                   )}
+
+                  {/* Overlay para apps deshabilitadas */}
                   {!app.enabled && (
                     <View style={styles.disabledOverlay}>
-                      <Typography variant="caption" color="secondary">
-                        Próximamente
-                      </Typography>
+                      <View style={styles.comingSoonBadge}>
+                        <Typography variant="caption" style={styles.comingSoonText}>
+                          Próximamente
+                        </Typography>
+                      </View>
                     </View>
                   )}
                 </Card>
@@ -166,7 +217,7 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: spacing[6],
     paddingTop: spacing[6],
-    paddingBottom: spacing[20],
+    paddingBottom: spacing[24],
     borderBottomLeftRadius: borderRadius['3xl'],
     borderBottomRightRadius: borderRadius['3xl'],
   },
@@ -174,73 +225,103 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing[6],
+    marginBottom: spacing[8],
   },
   greeting: {
-    opacity: 0.8,
+    opacity: 0.9,
     marginBottom: spacing[1],
   },
   statsContainer: {
-    gap: spacing[3],
+    gap: spacing[4],
   },
   statCard: {
-    ...shadows.md,
+    ...shadows.lg,
+    borderRadius: borderRadius['2xl'],
   },
   statContent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[4],
   },
+  statIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: borderRadius.xl,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   statText: {
     flex: 1,
+  },
+  statNumber: {
+    marginBottom: spacing[1],
   },
   content: {
     padding: spacing[6],
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing[5],
+  },
   sectionTitle: {
-    marginBottom: spacing[4],
+    flex: 1,
   },
   appsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing[4],
   },
-  appCard: {
-    width: 110,
+  appCardWrapper: {
+    width: CARD_WIDTH,
+  },
+  appGradient: {
     height: 120,
-    alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
+    alignItems: 'center',
+    padding: spacing[4],
   },
-  appCardDisabled: {
-    opacity: 0.5,
-  },
-  appIcon: {
-    width: 56,
-    height: 56,
+  appIconContainer: {
+    width: 72,
+    height: 72,
     borderRadius: borderRadius.xl,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing[2],
+    ...shadows.md,
+  },
+  appInfo: {
+    padding: spacing[4],
+    backgroundColor: colors.white,
+    minHeight: 68,
   },
   appName: {
-    fontSize: 13,
+    marginBottom: spacing[1],
+    fontWeight: '600',
   },
   appBadge: {
     position: 'absolute',
-    top: spacing[2],
-    right: spacing[2],
-    backgroundColor: colors.error[500],
-    borderRadius: borderRadius.full,
-    minWidth: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: spacing[2],
+    top: spacing[3],
+    right: spacing[3],
   },
   disabledOverlay: {
-    position: 'absolute',
-    bottom: spacing[2],
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  comingSoonBadge: {
+    backgroundColor: colors.neutral[800],
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[2],
+    borderRadius: borderRadius.full,
+    ...shadows.sm,
+  },
+  comingSoonText: {
+    color: colors.white,
+    fontWeight: '600',
+    fontSize: 11,
   },
 });
 

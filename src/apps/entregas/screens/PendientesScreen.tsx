@@ -309,7 +309,7 @@ const PendientesScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <Typography variant="h5">Pendientes de Envío</Typography>
         <TouchableOpacity onPress={handleSincronizar} disabled={sincronizando}>

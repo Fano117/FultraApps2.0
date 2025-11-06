@@ -11,6 +11,7 @@ export type MainTabParamList = {
   Entregas: undefined;
   Pendientes: undefined;
   Profile: undefined;
+  Notifications: undefined;
 };
 
 export type EntregasStackParamList = {

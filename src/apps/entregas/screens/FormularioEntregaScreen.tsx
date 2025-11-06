@@ -15,10 +15,10 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import { Paths, Directory, File } from 'expo-file-system';
 import { Card, Typography, Button, colors, spacing, borderRadius } from '@/design-system';
 import { EntregasStackParamList } from '@/navigation/types';
-import { TipoRegistro, ArticuloEntregaDTO, MotivoParcialidad } from '../models';
+import { TipoRegistro, ArticuloEntregaDTO, MotivoParcialidad, MotivoIncidencia } from '../models';
 import { useAppDispatch } from '@/shared/hooks';
 import { syncService } from '../services/syncService';
 
@@ -35,14 +35,6 @@ interface ImagenEvidencia {
   categoria: 'FISICA' | 'FACTURA' | 'INCIDENCIA' | 'PAGO';
 }
 
-const motivosNoEntregado = [
-  'Rechazo de cliente',
-  'Cliente ausente',
-  'Dirección incorrecta',
-  'Horario no disponible',
-  'Problema de acceso',
-  'Otro',
-];
 
 const FormularioEntregaScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
@@ -65,7 +57,7 @@ const FormularioEntregaScreen: React.FC = () => {
   const [motivoParcial, setMotivoParcial] = useState<MotivoParcialidad | null>(null);
 
   // Campos para no entregado
-  const [motivoNoEntregado, setMotivoNoEntregado] = useState<string>('');
+  const [motivoNoEntregado, setMotivoNoEntregado] = useState<MotivoIncidencia | null>(null);
 
   // Imágenes
   const [imagenesEvidencia, setImagenesEvidencia] = useState<ImagenEvidencia[]>([]);
@@ -153,7 +145,7 @@ const FormularioEntregaScreen: React.FC = () => {
   const tomarFoto = async (categoria: 'FISICA' | 'FACTURA' | 'INCIDENCIA' | 'PAGO') => {
     try {
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         quality: 0.8,
         allowsEditing: false,
       });
@@ -170,7 +162,7 @@ const FormularioEntregaScreen: React.FC = () => {
   const seleccionarImagen = async (categoria: 'FISICA' | 'FACTURA' | 'INCIDENCIA' | 'PAGO') => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: ['images'],
         quality: 0.8,
         allowsEditing: false,
         allowsMultipleSelection: false,
@@ -190,11 +182,11 @@ const FormularioEntregaScreen: React.FC = () => {
     categoria: 'FISICA' | 'FACTURA' | 'INCIDENCIA' | 'PAGO'
   ) => {
     try {
-      const directorioEvidencias = `${FileSystem.documentDirectory}FultraApps/Evidencias`;
-      const dirInfo = await FileSystem.getInfoAsync(directorioEvidencias);
+      // Crear directorio usando la nueva API de expo-file-system v19
+      const directorioEvidencias = new Directory(Paths.document, 'FultraApps', 'Evidencias');
 
-      if (!dirInfo.exists) {
-        await FileSystem.makeDirectoryAsync(directorioEvidencias, { intermediates: true });
+      if (!directorioEvidencias.exists) {
+        directorioEvidencias.create({ intermediates: true, idempotent: true });
       }
 
       const getSecuencia = (cat: string) => {
@@ -214,12 +206,16 @@ const FormularioEntregaScreen: React.FC = () => {
 
       const secuencia = getSecuencia(categoria);
       const nombreArchivo = generarNombreArchivo(categoria, secuencia);
-      const rutaDestino = `${directorioEvidencias}/${nombreArchivo}`;
+      const archivoDestino = new File(directorioEvidencias, nombreArchivo);
 
-      await FileSystem.copyAsync({ from: uri, to: rutaDestino });
+      // Copiar imagen desde la URI temporal
+      const archivoOrigen = new File(uri);
+      archivoOrigen.copy(archivoDestino);
+
+      console.log('[FormularioEntrega] Imagen guardada:', archivoDestino.uri);
 
       const nuevaImagen: ImagenEvidencia = {
-        uri: rutaDestino,
+        uri: archivoDestino.uri,
         nombre: nombreArchivo,
         categoria,
       };
@@ -415,6 +411,17 @@ const FormularioEntregaScreen: React.FC = () => {
     }
   };
 
+  const formatImageUri = (uri: string): string => {
+    // Asegurarse de que la URI tenga el prefijo file:// para React Native
+    if (uri.startsWith('file://')) {
+      return uri;
+    }
+    if (uri.startsWith('/')) {
+      return `file://${uri}`;
+    }
+    return uri;
+  };
+
   const renderImagenGallery = (
     imagenes: ImagenEvidencia[],
     categoria: 'FISICA' | 'FACTURA' | 'INCIDENCIA' | 'PAGO',
@@ -433,8 +440,14 @@ const FormularioEntregaScreen: React.FC = () => {
 
       <View style={styles.imagenesContainer}>
         {imagenes.map((imagen, index) => (
-          <View key={index} style={styles.imagenWrapper}>
-            <Image source={{ uri: imagen.uri }} style={styles.imagenPreview} />
+          <View key={`${imagen.nombre}-${index}`} style={styles.imagenWrapper}>
+            <Image
+              source={{ uri: formatImageUri(imagen.uri) }}
+              style={styles.imagenPreview}
+              onError={(error) => {
+                console.error('[FormularioEntrega] Error cargando imagen:', imagen.uri, error.nativeEvent.error);
+              }}
+            />
             <TouchableOpacity
               style={styles.eliminarButton}
               onPress={() => eliminarImagen(categoria, index)}
@@ -473,7 +486,7 @@ const FormularioEntregaScreen: React.FC = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.text.primary} />
@@ -569,7 +582,7 @@ const FormularioEntregaScreen: React.FC = () => {
             <Typography variant="subtitle1" style={styles.sectionTitle}>
               Motivo de No Entrega *
             </Typography>
-            {motivosNoEntregado.map((motivo) => (
+            {Object.values(MotivoIncidencia).map((motivo) => (
               <TouchableOpacity
                 key={motivo}
                 style={[

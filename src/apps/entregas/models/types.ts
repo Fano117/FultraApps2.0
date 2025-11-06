@@ -17,6 +17,27 @@ export enum MotivoParcialidad {
   FALTA_DE_EQUIPO = 'Falta de equipo',
 }
 
+export enum MotivoIncidencia {
+  SOLICITA_REPROGRAMAR = 'Solicita reprogramar',
+  PEDIDO_DUPLICADO = 'Pedido duplicado',
+  FALTA_DE_DOCUMENTACION = 'Falta de documentación',
+  MATERIAL_INCORRECTO = 'Material incorrecto',
+  MATERIAL_EMPAQUE_DANADO = 'Material-Empaque dañado',
+  HORARIO_ENTREGA_INCORRECTO = 'Horario de entrega incorrecto',
+  DIRECCION_INCORRECTA = 'Dirección incorrecta',
+  ACCIDENTE_VIAL = 'Accidente vial',
+  RECHAZO_CLIENTE = 'Rechazo de cliente',
+  FALTA_DE_EQUIPO = 'Falta de equipo',
+}
+
+export enum EstadoEntrega {
+  PENDIENTE = 'PENDIENTE',
+  ENTREGADO_COMPLETO = 'ENTREGADO_COMPLETO',
+  ENTREGADO_PARCIAL = 'ENTREGADO_PARCIAL',
+  NO_ENTREGADO = 'NO_ENTREGADO',
+  PENDIENTE_ENVIO = 'PENDIENTE_ENVIO',
+}
+
 export enum EstadoSincronizacion {
   PENDIENTE_ENVIO = 'PENDIENTE_ENVIO',
   ENVIANDO = 'ENVIANDO',

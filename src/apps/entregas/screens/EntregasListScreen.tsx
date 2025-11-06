@@ -14,7 +14,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Card, Typography, Badge, colors, spacing, borderRadius } from '@/design-system';
 import { useAppSelector, useAppDispatch } from '@/shared/hooks';
 import { fetchEmbarques, loadLocalData } from '../store/entregasSlice';
-import { ClienteEntregaDTO, EntregaDTO } from '../models';
+import { ClienteEntregaDTO, EntregaDTO, EstadoEntrega } from '../models';
 import { EntregasStackParamList } from '@/navigation/types';
 
 type NavigationProp = NativeStackNavigationProp<EntregasStackParamList, 'EntregasList'>;
@@ -50,12 +50,15 @@ const EntregasListScreen: React.FC = () => {
   };
 
   const getEstadoColor = (estado: string) => {
-    switch (estado.toUpperCase()) {
-      case 'PENDIENTE':
+    switch (estado) {
+      case EstadoEntrega.PENDIENTE:
+      case EstadoEntrega.PENDIENTE_ENVIO:
         return 'warning';
-      case 'COMPLETADO':
+      case EstadoEntrega.ENTREGADO_COMPLETO:
         return 'success';
-      case 'CANCELADO':
+      case EstadoEntrega.ENTREGADO_PARCIAL:
+        return 'info';
+      case EstadoEntrega.NO_ENTREGADO:
         return 'error';
       default:
         return 'neutral';
@@ -163,7 +166,7 @@ const EntregasListScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <FlatList
         data={clientes}
         renderItem={renderCliente}

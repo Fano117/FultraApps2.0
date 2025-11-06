@@ -1,5 +1,5 @@
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import { Paths, Directory, File } from 'expo-file-system';
 import { Alert, Platform } from 'react-native';
 
 export interface ImageEvidence {
@@ -9,13 +9,12 @@ export interface ImageEvidence {
 }
 
 class ImageService {
-  private readonly EVIDENCIAS_DIR = `${FileSystem.documentDirectory}FultraApps/Evidencias/`;
+  private readonly EVIDENCIAS_DIR = new Directory(Paths.document, 'FultraApps', 'Evidencias');
 
   async initializeDirectory(): Promise<void> {
     try {
-      const dirInfo = await FileSystem.getInfoAsync(this.EVIDENCIAS_DIR);
-      if (!dirInfo.exists) {
-        await FileSystem.makeDirectoryAsync(this.EVIDENCIAS_DIR, { intermediates: true });
+      if (!this.EVIDENCIAS_DIR.exists) {
+        this.EVIDENCIAS_DIR.create({ intermediates: true, idempotent: true });
       }
     } catch (error) {
       console.error('Error initializing directory:', error);
@@ -123,21 +122,14 @@ class ImageService {
       await this.initializeDirectory();
 
       const nombreArchivo = evidencia.nombre.replace(/[^a-zA-Z0-9_.-]/g, '_');
-      const rutaDestino = `${this.EVIDENCIAS_DIR}${nombreArchivo}`;
+      const archivoDestino = new File(this.EVIDENCIAS_DIR, nombreArchivo);
 
-      const uriOrigen = evidencia.uri.startsWith('file://')
-        ? evidencia.uri
-        : `file://${evidencia.uri}`;
+      const archivoOrigen = new File(evidencia.uri);
+      archivoOrigen.copy(archivoDestino);
 
-      await FileSystem.copyAsync({
-        from: uriOrigen,
-        to: rutaDestino,
-      });
-
-      const fileInfo = await FileSystem.getInfoAsync(rutaDestino);
-      if (fileInfo.exists) {
-        console.log(`Archivo guardado: ${rutaDestino} (${fileInfo.size} bytes)`);
-        return rutaDestino;
+      if (archivoDestino.exists) {
+        console.log(`Archivo guardado: ${archivoDestino.uri}`);
+        return archivoDestino.uri;
       }
 
       return null;
@@ -149,11 +141,10 @@ class ImageService {
 
   async eliminarEvidenciaLocal(rutaArchivo: string): Promise<boolean> {
     try {
-      const rutaLimpia = rutaArchivo.replace('file://', '');
-      const fileInfo = await FileSystem.getInfoAsync(rutaLimpia);
+      const archivo = new File(rutaArchivo);
 
-      if (fileInfo.exists) {
-        await FileSystem.deleteAsync(rutaLimpia);
+      if (archivo.exists) {
+        archivo.delete();
         return true;
       }
 
@@ -183,21 +174,25 @@ class ImageService {
     try {
       await this.initializeDirectory();
 
-      const archivos = await FileSystem.readDirectoryAsync(this.EVIDENCIAS_DIR);
+      const archivos = this.EVIDENCIAS_DIR.list();
       const ahora = Date.now();
       const diasEnMs = dias * 24 * 60 * 60 * 1000;
       let archivosEliminados = 0;
 
       for (const archivo of archivos) {
-        const rutaCompleta = `${this.EVIDENCIAS_DIR}${archivo}`;
-        const fileInfo = await FileSystem.getInfoAsync(rutaCompleta);
+        if (archivo instanceof File) {
+          try {
+            const fileInfo = archivo.info();
+            if (fileInfo.modificationTime) {
+              const tiempoTranscurrido = ahora - fileInfo.modificationTime * 1000;
 
-        if (fileInfo.exists && fileInfo.modificationTime) {
-          const tiempoTranscurrido = ahora - fileInfo.modificationTime * 1000;
-
-          if (tiempoTranscurrido > diasEnMs) {
-            await FileSystem.deleteAsync(rutaCompleta);
-            archivosEliminados++;
+              if (tiempoTranscurrido > diasEnMs) {
+                archivo.delete();
+                archivosEliminados++;
+              }
+            }
+          } catch (err) {
+            console.error('Error procesando archivo:', err);
           }
         }
       }

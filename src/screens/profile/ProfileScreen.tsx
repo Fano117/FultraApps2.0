@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, Alert, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import { Card, Typography, Avatar, Button, colors, spacing, borderRadius } from '@/design-system';
 import { useAppSelector, useAppDispatch } from '@/shared/hooks';
 import { logout } from '@/shared/store/slices/authSlice';
@@ -10,9 +11,11 @@ import { entregasStorageService } from '@/apps/entregas/services';
 import { APP_VERSION } from '@/shared/config';
 
 const ProfileScreen: React.FC = () => {
+  const navigation = useNavigation();
   const dispatch = useAppDispatch();
   const { user } = useAppSelector((state) => state.auth);
   const { entregasSync } = useAppSelector((state) => state.entregas);
+  const { unreadCount } = useAppSelector((state) => state.notifications);
   const [loading, setLoading] = useState(false);
 
   const handleLogout = () => {
@@ -79,8 +82,9 @@ const ProfileScreen: React.FC = () => {
     {
       icon: 'notifications-outline',
       title: 'Notificaciones',
-      subtitle: 'Configurar notificaciones',
-      onPress: () => {},
+      subtitle: unreadCount > 0 ? `${unreadCount} sin leer` : 'Sin notificaciones nuevas',
+      onPress: () => navigation.navigate('Notifications' as never),
+      badge: unreadCount,
     },
     {
       icon: 'shield-checkmark-outline',
@@ -110,27 +114,6 @@ const ProfileScreen: React.FC = () => {
           </Typography>
         </View>
 
-        <View style={styles.statsContainer}>
-          <Card variant="elevated" padding="medium" style={styles.statCard}>
-            <View style={styles.statContent}>
-              <Ionicons name="cube-outline" size={32} color={colors.primary[600]} />
-              <Typography variant="h4">0</Typography>
-              <Typography variant="caption" color="secondary">
-                Completadas
-              </Typography>
-            </View>
-          </Card>
-
-          <Card variant="elevated" padding="medium" style={styles.statCard}>
-            <View style={styles.statContent}>
-              <Ionicons name="sync-outline" size={32} color={colors.warning[600]} />
-              <Typography variant="h4">{entregasSync.length}</Typography>
-              <Typography variant="caption" color="secondary">
-                Pendientes
-              </Typography>
-            </View>
-          </Card>
-        </View>
 
         <View style={styles.menuContainer}>
           {menuItems.map((item, index) => (
@@ -149,6 +132,13 @@ const ProfileScreen: React.FC = () => {
                         size={24}
                         color={item.danger ? colors.error[600] : colors.primary[600]}
                       />
+                      {item.badge && item.badge > 0 && (
+                        <View style={styles.badge}>
+                          <Typography variant="caption" color="inverse" style={styles.badgeText}>
+                            {item.badge > 99 ? '99+' : String(item.badge)}
+                          </Typography>
+                        </View>
+                      )}
                     </View>
                     <View style={styles.menuItemText}>
                       <Typography
@@ -215,18 +205,6 @@ const styles = StyleSheet.create({
   userName: {
     marginTop: spacing[3],
   },
-  statsContainer: {
-    flexDirection: 'row',
-    padding: spacing[4],
-    gap: spacing[4],
-  },
-  statCard: {
-    flex: 1,
-  },
-  statContent: {
-    alignItems: 'center',
-    gap: spacing[2],
-  },
   menuContainer: {
     padding: spacing[4],
     gap: spacing[2],
@@ -253,9 +231,28 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary[50],
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
   },
   menuItemIconDanger: {
     backgroundColor: colors.error[50],
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: colors.error[500],
+    borderRadius: borderRadius.full,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing[1],
+    borderWidth: 2,
+    borderColor: colors.white,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '700',
   },
   menuItemText: {
     flex: 1,

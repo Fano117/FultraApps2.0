@@ -2,17 +2,19 @@ import { configureStore, combineReducers } from '@reduxjs/toolkit';
 import { persistStore, persistReducer, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import authReducer from './slices/authSlice';
+import notificationsReducer from './slices/notificationsSlice';
 import entregasReducer from '@/apps/entregas/store/entregasSlice';
 
 const persistConfig = {
   key: 'root',
   version: 1,
   storage: AsyncStorage,
-  whitelist: ['auth', 'entregas'],
+  whitelist: ['auth', 'entregas', 'notifications'],
 };
 
 const rootReducer = combineReducers({
   auth: authReducer,
+  notifications: notificationsReducer,
   entregas: entregasReducer,
 });
 

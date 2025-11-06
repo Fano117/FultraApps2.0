@@ -4,7 +4,7 @@ import { typography, TypographyVariant, colors, TextColor } from '../../theme';
 
 export interface TypographyProps extends TextProps {
   variant?: TypographyVariant;
-  color?: keyof typeof colors.text;
+  color?: TextColor;
   align?: TextStyle['textAlign'];
   children: React.ReactNode;
 }
@@ -17,11 +17,11 @@ export const Typography: React.FC<TypographyProps> = ({
   children,
   ...props
 }) => {
-  const textStyle: TextStyle = [
+  const textStyle = [
     typography[variant],
     { color: colors.text[color], textAlign: align },
     style,
-  ].filter(Boolean) as TextStyle;
+  ].filter(Boolean);
 
   return (
     <Text style={textStyle} {...props}>
