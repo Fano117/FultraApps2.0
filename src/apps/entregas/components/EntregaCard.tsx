@@ -13,13 +13,13 @@ export const EntregaCard: React.FC<EntregaCardProps> = ({ entrega, onPress, show
   const getStatusColor = (status: EstatusEntrega): string => {
     switch (status) {
       case EstatusEntrega.COMPLETADA:
-        return colors.success.main;
+        return colors.success[500];
       case EstatusEntrega.EN_RUTA:
         return colors.primary[500];
       case EstatusEntrega.EN_SITIO:
         return colors.warning[500];
       case EstatusEntrega.LLEGADA_CERCANA:
-        return colors.info.main;
+        return colors.info[500];
       default:
         return colors.neutral[400];
     }
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
   },
   instructions: {
     fontSize: 13,
-    color: colors.info.main,
+    color: colors.info[500],
     marginTop: spacing[3],
     fontStyle: 'italic',
     lineHeight: 18,

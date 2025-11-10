@@ -8,6 +8,7 @@ Notifications.setNotificationHandler({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    priority: Notifications.AndroidNotificationPriority.HIGH,
   }),
 });
 
@@ -98,7 +99,9 @@ class NotificationService {
     triggerSeconds: number = 0
   ): Promise<string> {
     try {
-      const trigger = triggerSeconds > 0 ? { seconds: triggerSeconds } : null;
+      const trigger = triggerSeconds > 0 ? 
+        { type: 'timeInterval' as const, seconds: triggerSeconds } : 
+        null;
 
       const notificationId = await Notifications.scheduleNotificationAsync({
         content: {

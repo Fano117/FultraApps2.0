@@ -83,7 +83,7 @@ export const MapViewComponent: React.FC<MapViewComponentProps> = ({
       case 'COMPLETADA':
         return colors.success[500];
       case 'EN_RUTA':
-        return colors.primary.main;
+        return colors.primary[500];
       case 'EN_SITIO':
         return colors.warning[500];
       default:
@@ -94,7 +94,7 @@ export const MapViewComponent: React.FC<MapViewComponentProps> = ({
   if (isLoading || !region) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary.main} />
+        <ActivityIndicator size="large" color={colors.primary[500]} />
       </View>
     );
   }
@@ -118,7 +118,7 @@ export const MapViewComponent: React.FC<MapViewComponentProps> = ({
               longitude: currentLocation.longitud,
             }}
             title="Mi ubicación"
-            pinColor={colors.primary.main}
+            pinColor={colors.primary[500]}
           />
         )}
 
@@ -147,7 +147,7 @@ export const MapViewComponent: React.FC<MapViewComponentProps> = ({
               latitude: coord.latitud,
               longitude: coord.longitud,
             }))}
-            strokeColor={colors.primary.main}
+            strokeColor={colors.primary[500]}
             strokeWidth={4}
           />
         )}

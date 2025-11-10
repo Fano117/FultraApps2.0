@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: spacing.md,
+    padding: spacing[4],
   },
   section: {
     marginBottom: spacing[6],
@@ -267,11 +267,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: colors.neutral[900],
-    marginBottom: spacing.md,
+    marginBottom: spacing[4],
   },
   infoCard: {
     backgroundColor: 'white',
-    padding: spacing.md,
+    padding: spacing[4],
     borderRadius: 8,
   },
   infoLabel: {
@@ -289,17 +289,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.neutral[300],
     borderRadius: 8,
-    padding: spacing.md,
+    padding: spacing[4],
     fontSize: 16,
     marginBottom: spacing[3],
   },
   textArea: {
     height: 100,
-    paddingTop: spacing.md,
+    paddingTop: spacing[4],
   },
   captureButton: {
     backgroundColor: colors.primary[500],
-    padding: spacing.md,
+    padding: spacing[4],
     borderRadius: 8,
     alignItems: 'center',
   },
@@ -333,12 +333,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   submitButton: {
-    backgroundColor: colors.success.main,
-    padding: spacing.md,
+    backgroundColor: colors.success[500],
+    padding: spacing[4],
     borderRadius: 8,
     alignItems: 'center',
-    marginTop: spacing.md,
-    marginBottom: spacing.xl,
+    marginTop: spacing[4],
+    marginBottom: spacing[10],
   },
   submitButtonDisabled: {
     backgroundColor: colors.neutral[400],
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
   signatureHeader: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    padding: spacing.md,
+    padding: spacing[4],
     backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: colors.neutral[200],
