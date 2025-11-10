@@ -70,6 +70,13 @@
         {
           "photosPermission": "Necesitamos acceso a la galería para seleccionar fotos de evidencias."
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#8B5CF6"
+        }
       ]
     ],
     "scheme": "com.fultraapps"
