@@ -6,7 +6,6 @@ import {
   RefreshControl,
   TouchableOpacity,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -124,7 +123,7 @@ const ClientesEntregasScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <View style={styles.container}>
       <View style={styles.header}>
         <Typography variant="h5">Clientes - Entregas</Typography>
       </View>
@@ -163,7 +162,7 @@ const ClientesEntregasScreen: React.FC = () => {
           </View>
         }
       />
-    </SafeAreaView>
+    </View>
   );
 };
 

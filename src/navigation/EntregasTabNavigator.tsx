@@ -15,39 +15,32 @@ const EntregasTabNavigator: React.FC = () => {
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.white} />
 
-      {/* Header personalizado */}
-      <View style={styles.header}>
-        <Typography variant="h5" style={styles.headerTitle}>
-          Entregas
-        </Typography>
-      </View>
-
       <Tab.Navigator
         screenOptions={{
           tabBarActiveTintColor: colors.primary[600],
-          tabBarInactiveTintColor: colors.neutral[500],
+          tabBarInactiveTintColor: colors.neutral[600],
           tabBarIndicatorStyle: {
             backgroundColor: colors.primary[600],
             height: 3,
           },
           tabBarLabelStyle: {
-            fontSize: 15,
-            fontWeight: '600',
+            fontSize: 16,
+            fontWeight: '700',
             textTransform: 'none',
-            marginTop: 4,
+            color: colors.neutral[900],
           },
           tabBarStyle: {
             backgroundColor: colors.white,
-            elevation: 4,
+            elevation: 2,
             shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 3,
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.05,
+            shadowRadius: 2,
             borderBottomWidth: 1,
             borderBottomColor: colors.border.light,
           },
           tabBarItemStyle: {
-            paddingVertical: 8,
+            paddingVertical: 12,
           },
           lazy: true,
           swipeEnabled: true,

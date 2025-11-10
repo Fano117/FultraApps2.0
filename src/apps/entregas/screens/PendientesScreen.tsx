@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Card, Typography, Badge, Button, colors, spacing, borderRadius } from '@/design-system';
 import { useAppSelector, useAppDispatch } from '@/shared/hooks';
@@ -309,7 +308,7 @@ const PendientesScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <View style={styles.container}>
       <View style={styles.header}>
         <Typography variant="h5">Pendientes de Envío</Typography>
         <TouchableOpacity onPress={handleSincronizar} disabled={sincronizando}>
@@ -356,7 +355,7 @@ const PendientesScreen: React.FC = () => {
           </Button>
         </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 
