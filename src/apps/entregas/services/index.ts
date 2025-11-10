@@ -5,3 +5,5 @@ export * from './syncService';
 export * from './locationService';
 export * from './geofenceService';
 export * from './notificationService';
+
+export * from '../api';
