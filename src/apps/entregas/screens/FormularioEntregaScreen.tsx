@@ -19,8 +19,10 @@ import { Paths, Directory, File } from 'expo-file-system';
 import { Card, Typography, Button, colors, spacing, borderRadius } from '@/design-system';
 import { EntregasStackParamList } from '@/navigation/types';
 import { TipoRegistro, ArticuloEntregaDTO, MotivoParcialidad, MotivoIncidencia } from '../models';
-import { useAppDispatch } from '@/shared/hooks';
+import { useAppDispatch, useAppSelector } from '@/shared/hooks';
 import { syncService } from '../services/syncService';
+import { loadLocalData } from '../store/entregasSlice';
+import { entregasStorageService } from '../services/storageService';
 
 type RouteParams = RouteProp<EntregasStackParamList, 'FormularioEntrega'>;
 type NavigationProp = NativeStackNavigationProp<EntregasStackParamList, 'FormularioEntrega'>;
@@ -336,6 +338,27 @@ const FormularioEntregaScreen: React.FC = () => {
   const handleGuardar = async () => {
     if (!validarFormulario()) return;
 
+    // VALIDACIÓN CRÍTICA: Verificar si el folio ya está en sincronización
+    try {
+      const entregasSync = await entregasStorageService.getEntregasSync();
+      const yaExiste = entregasSync.some(
+        e => e.ordenVenta === entrega.ordenVenta && e.folio === entrega.folio
+      );
+
+      if (yaExiste) {
+        Alert.alert(
+          'Entrega ya procesada',
+          'Este folio ya ha sido registrado y está en proceso de sincronización. No se puede realizar la entrega nuevamente.',
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+        return;
+      }
+    } catch (error) {
+      console.error('[FormularioEntrega] Error verificando entregas sync:', error);
+      Alert.alert('Error', 'No se pudo verificar el estado de sincronización');
+      return;
+    }
+
     setLoading(true);
     try {
       const articulosData =
@@ -352,27 +375,35 @@ const FormularioEntregaScreen: React.FC = () => {
             }));
 
       const entregaData = {
+        id: `${entrega.ordenVenta}-${entrega.folio}-${Date.now()}`,
+        estado: 'PENDIENTE_ENVIO' as any,
+        intentosEnvio: 0,
         clienteCarga,
         ordenVenta: entrega.ordenVenta,
         folio: entrega.folio,
         tipoEntrega: tipoRegistro,
-        nombreRecibe: nombreRecibe || null,
-        comentarios: comentarios || null,
+        nombreQuienEntrega: nombreRecibe || undefined,
+        comentarios: comentarios || undefined,
         razonIncidencia:
           tipoRegistro === TipoRegistro.NO_ENTREGADO
             ? motivoNoEntregado
             : tipoRegistro === TipoRegistro.PARCIAL
             ? motivoParcial
-            : null,
+            : undefined,
         latitud: ubicacion?.latitude.toString() || '0',
         longitud: ubicacion?.longitude.toString() || '0',
+        fechaCaptura: new Date(),
+        enviadoServer: false,
         articulos: articulosData,
-        imagenesEvidencia: imagenesEvidencia.map((img) => img.nombre),
-        imagenesFacturas: imagenesFactura.map((img) => img.nombre),
-        imagenesIncidencia: imagenesIncidencia.map((img) => img.nombre),
+        imagenesEvidencia: imagenesEvidencia.map((img) => ({ nombre: img.nombre, enviado: false })),
+        imagenesFacturas: imagenesFactura.map((img) => ({ nombre: img.nombre, enviado: false })),
+        imagenesIncidencia: imagenesIncidencia.map((img) => ({ nombre: img.nombre, enviado: false })),
       };
 
-      const result = await syncService.enviarEntregaDirecto(entregaData);
+      const result = await syncService.enviarEntregaDirecto(entregaData as any);
+
+      // Actualizar Redux con los datos locales (incluye entregasSync y clientes actualizados)
+      await dispatch(loadLocalData());
 
       if (result.success) {
         Alert.alert('Éxito', 'La entrega se registró correctamente', [

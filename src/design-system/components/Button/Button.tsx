@@ -68,9 +68,9 @@ export const Button: React.FC<ButtonProps> = ({
           style={styles.loader}
         />
       )}
-      {!loading && leftIcon && <>{leftIcon}</>}
+      {!loading && leftIcon}
       <Text style={textStyles}>{children}</Text>
-      {!loading && rightIcon && <>{rightIcon}</>}
+      {!loading && rightIcon}
     </>
   );
 

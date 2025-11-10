@@ -13,6 +13,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Card, Typography, Badge, colors, spacing, borderRadius } from '@/design-system';
 import { EntregasStackParamList } from '@/navigation/types';
 import { TipoRegistro } from '../models';
+import { entregasStorageService } from '../services/storageService';
 
 type RouteParams = RouteProp<EntregasStackParamList, 'DetalleOrden'>;
 type NavigationProp = NativeStackNavigationProp<EntregasStackParamList, 'DetalleOrden'>;
@@ -28,9 +29,30 @@ const DetalleOrdenScreen: React.FC = () => {
     setSelectedTipo(tipo);
   };
 
-  const handleContinuar = () => {
+  const handleContinuar = async () => {
     if (!selectedTipo) {
       Alert.alert('Selección requerida', 'Por favor selecciona cómo se realizó la entrega');
+      return;
+    }
+
+    // VALIDACIÓN: Verificar si el folio ya está en sincronización
+    try {
+      const entregasSync = await entregasStorageService.getEntregasSync();
+      const yaExiste = entregasSync.some(
+        e => e.ordenVenta === entrega.ordenVenta && e.folio === entrega.folio
+      );
+
+      if (yaExiste) {
+        Alert.alert(
+          'Entrega ya procesada',
+          'Este folio ya ha sido registrado y está en proceso de sincronización. No se puede realizar la entrega nuevamente.',
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+        return;
+      }
+    } catch (error) {
+      console.error('[DetalleOrden] Error verificando entregas sync:', error);
+      Alert.alert('Error', 'No se pudo verificar el estado de sincronización');
       return;
     }
 

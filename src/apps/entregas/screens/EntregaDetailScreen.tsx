@@ -25,6 +25,7 @@ import {
 import { useAppDispatch } from '@/shared/hooks';
 import { saveEntregaLocal } from '../store/entregasSlice';
 import { imageService, ImageEvidence, syncService } from '../services';
+import { entregasStorageService } from '../services/storageService';
 import {
   EntregaDTO,
   ArticuloEntregaDTO,
@@ -183,6 +184,27 @@ const EntregaDetailScreen: React.FC = () => {
 
     if (!location) {
       Alert.alert('Error', 'No se pudo obtener la ubicación');
+      return;
+    }
+
+    // VALIDACIÓN CRÍTICA: Verificar si el folio ya está en sincronización
+    try {
+      const entregasSync = await entregasStorageService.getEntregasSync();
+      const yaExiste = entregasSync.some(
+        e => e.ordenVenta === entrega.ordenVenta && e.folio === entrega.folio
+      );
+
+      if (yaExiste) {
+        Alert.alert(
+          'Entrega ya procesada',
+          'Este folio ya ha sido registrado y está en proceso de sincronización. No se puede realizar la entrega nuevamente.',
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+        return;
+      }
+    } catch (error) {
+      console.error('[EntregaDetail] Error verificando entregas sync:', error);
+      Alert.alert('Error', 'No se pudo verificar el estado de sincronización');
       return;
     }
 

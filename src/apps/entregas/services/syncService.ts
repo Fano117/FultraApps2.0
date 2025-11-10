@@ -256,6 +256,8 @@ class SyncService {
         estado: EstadoSincronizacion.PENDIENTE_ENVIO,
       });
 
+      await entregasStorageService.removeEntrega(entrega.ordenVenta, entrega.folio);
+
       return {
         success: false,
         entregasSincronizadas: 0,
@@ -266,20 +268,39 @@ class SyncService {
 
     console.log('[SyncService] Enviando entrega directamente (con internet)');
 
-    const exitoso = await this.sincronizarEntrega(entrega);
+    try {
+      await entregasStorageService.saveEntregaSync({
+        ...entrega,
+        estado: EstadoSincronizacion.ENVIANDO,
+      });
 
-    if (exitoso) {
-      return {
-        success: true,
-        entregasSincronizadas: 1,
-        entregasConError: 0,
-        mensaje: 'Entrega sincronizada exitosamente',
-      };
-    } else {
+      await entregasStorageService.removeEntrega(entrega.ordenVenta, entrega.folio);
+
+      const exitoso = await this.sincronizarEntrega(entrega);
+
+      if (exitoso) {
+        return {
+          success: true,
+          entregasSincronizadas: 1,
+          entregasConError: 0,
+          mensaje: 'Entrega sincronizada exitosamente',
+        };
+      } else {
+        return {
+          success: false,
+          entregasSincronizadas: 0,
+          entregasConError: 1,
+          mensaje: 'Error al sincronizar. Se reintentará automáticamente.',
+        };
+      }
+    } catch (error: any) {
+      console.error('[SyncService] Error en enviarEntregaDirecto:', error);
+
       await entregasStorageService.saveEntregaSync({
         ...entrega,
         estado: EstadoSincronizacion.ERROR,
         intentosEnvio: 1,
+        ultimoError: error.message || 'Error desconocido',
       });
 
       return {

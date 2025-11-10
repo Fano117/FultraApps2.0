@@ -22,7 +22,7 @@ type NavigationProp = NativeStackNavigationProp<EntregasStackParamList, 'Entrega
 const EntregasListScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const dispatch = useAppDispatch();
-  const { clientes, loading, error } = useAppSelector((state) => state.entregas);
+  const { clientes, entregasSync, loading, error } = useAppSelector((state) => state.entregas);
   const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -42,6 +42,25 @@ const EntregasListScreen: React.FC = () => {
       newExpanded.add(clienteKey);
     }
     setExpandedClients(newExpanded);
+  };
+
+  // Filtrar entregas que ya están en sincronización
+  const getClientesFiltrados = (): ClienteEntregaDTO[] => {
+    // Crear un Set de folios que ya están en sincronización
+    const foliosEnSync = new Set(
+      entregasSync.map(e => `${e.ordenVenta}-${e.folio}`)
+    );
+
+    // Filtrar clientes y sus entregas
+    return clientes
+      .map(cliente => ({
+        ...cliente,
+        entregas: cliente.entregas.filter(entrega => {
+          const key = `${entrega.ordenVenta}-${entrega.folio}`;
+          return !foliosEnSync.has(key);
+        })
+      }))
+      .filter(cliente => cliente.entregas.length > 0); // Solo mostrar clientes con entregas pendientes
   };
 
   const handleEntregaPress = (cliente: ClienteEntregaDTO, entrega: EntregaDTO) => {
@@ -74,7 +93,6 @@ const EntregasListScreen: React.FC = () => {
 
     return (
       <TouchableOpacity
-        key={`${entrega.ordenVenta}-${entrega.folio}`}
         onPress={() => handleEntregaPress(cliente, entrega)}
         activeOpacity={0.7}
       >
@@ -158,17 +176,23 @@ const EntregasListScreen: React.FC = () => {
 
         {isExpanded && (
           <View style={styles.entregasContainer}>
-            {item.entregas.map((entrega) => renderEntrega(entrega, item))}
+            {item.entregas.map((entrega) => (
+              <React.Fragment key={`${entrega.ordenVenta}-${entrega.folio}`}>
+                {renderEntrega(entrega, item)}
+              </React.Fragment>
+            ))}
           </View>
         )}
       </View>
     );
   };
 
+  const clientesFiltrados = getClientesFiltrados();
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <FlatList
-        data={clientes}
+        data={clientesFiltrados}
         renderItem={renderCliente}
         keyExtractor={(item) => `${item.carga}-${item.cuentaCliente}`}
         contentContainerStyle={styles.listContent}

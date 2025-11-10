@@ -8,10 +8,14 @@ export type RootStackParamList = {
 
 export type MainTabParamList = {
   Home: undefined;
-  Entregas: undefined;
-  Pendientes: undefined;
+  Entregas: NavigatorScreenParams<EntregasTabParamList>;
   Profile: undefined;
   Notifications: undefined;
+};
+
+export type EntregasTabParamList = {
+  EntregasTab: NavigatorScreenParams<EntregasStackParamList>;
+  PendientesTab: undefined;
 };
 
 export type EntregasStackParamList = {

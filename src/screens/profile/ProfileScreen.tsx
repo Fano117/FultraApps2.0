@@ -9,6 +9,7 @@ import { logout } from '@/shared/store/slices/authSlice';
 import { authService } from '@/shared/services';
 import { entregasStorageService } from '@/apps/entregas/services';
 import { APP_VERSION } from '@/shared/config';
+import { persistor } from '@/shared/store';
 
 const ProfileScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -22,7 +23,7 @@ const ProfileScreen: React.FC = () => {
     if (entregasSync.length > 0) {
       Alert.alert(
         'Entregas pendientes',
-        `Tienes ${entregasSync.length} entrega(s) pendiente(s) de sincronizar. ¿Deseas cerrar sesión de todos modos?`,
+        `Tienes ${entregasSync.length.toString()} entrega(s) pendiente(s) de sincronizar. ¿Deseas cerrar sesión de todos modos?`,
         [
           { text: 'Cancelar', style: 'cancel' },
           {
@@ -72,6 +73,44 @@ const ProfileScreen: React.FC = () => {
     );
   };
 
+  const handleClearAllData = () => {
+    Alert.alert(
+      'Eliminar Datos',
+      '¿Estás seguro de que deseas eliminar TODOS los datos de la aplicación? Esto incluye tu sesión, notificaciones y entregas. Deberás iniciar sesión nuevamente.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar Todo',
+          style: 'destructive',
+          onPress: async () => {
+            setLoading(true);
+            try {
+              await persistor.purge();
+              await entregasStorageService.clearAllData();
+              Alert.alert(
+                'Datos eliminados',
+                'Todos los datos han sido eliminados. La aplicación se reiniciará.',
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => {
+                      dispatch(logout());
+                    },
+                  },
+                ]
+              );
+            } catch (error) {
+              console.error('Error clearing all data:', error);
+              Alert.alert('Error', 'No se pudieron eliminar todos los datos');
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const menuItems = [
     {
       icon: 'person-outline',
@@ -82,7 +121,7 @@ const ProfileScreen: React.FC = () => {
     {
       icon: 'notifications-outline',
       title: 'Notificaciones',
-      subtitle: unreadCount > 0 ? `${unreadCount} sin leer` : 'Sin notificaciones nuevas',
+      subtitle: unreadCount > 0 ? `${unreadCount.toString()} sin leer` : 'Sin notificaciones nuevas',
       onPress: () => navigation.navigate('Notifications' as never),
       badge: unreadCount,
     },
@@ -97,6 +136,13 @@ const ProfileScreen: React.FC = () => {
       title: 'Limpiar Caché',
       subtitle: 'Eliminar datos locales',
       onPress: handleClearCache,
+      danger: true,
+    },
+    {
+      icon: 'nuclear-outline',
+      title: 'Eliminar Datos',
+      subtitle: 'Eliminar todo el storage de Redux',
+      onPress: handleClearAllData,
       danger: true,
     },
   ];
@@ -135,7 +181,7 @@ const ProfileScreen: React.FC = () => {
                       {item.badge && item.badge > 0 && (
                         <View style={styles.badge}>
                           <Typography variant="caption" color="inverse" style={styles.badgeText}>
-                            {item.badge > 99 ? '99+' : String(item.badge)}
+                            {item.badge > 99 ? '99+' : `${item.badge}`}
                           </Typography>
                         </View>
                       )}
@@ -175,7 +221,7 @@ const ProfileScreen: React.FC = () => {
 
           <View style={styles.versionContainer}>
             <Typography variant="caption" color="secondary" align="center">
-              FultraApps {APP_VERSION}
+              {`FultraApps ${APP_VERSION}`}
             </Typography>
             <Typography variant="caption" color="secondary" align="center">
               © 2025 Fultra. Todos los derechos reservados.

@@ -15,7 +15,7 @@ const HomeScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigation = useNavigation();
   const { user } = useAppSelector((state) => state.auth);
-  const { clientes, entregasSync, loading } = useAppSelector((state) => state.entregas);
+  const { clientes, loading } = useAppSelector((state) => state.entregas);
 
   useEffect(() => {
     loadData();
@@ -26,7 +26,6 @@ const HomeScreen: React.FC = () => {
   };
 
   const totalEntregas = clientes.reduce((sum, cliente) => sum + cliente.entregas.length, 0);
-  const pendientesSinc = entregasSync.length;
 
   const apps = [
     {
@@ -109,27 +108,6 @@ const HomeScreen: React.FC = () => {
             </View>
             <Avatar name={user?.name} size="large" />
           </View>
-
-          {/* Estadísticas */}
-          {pendientesSinc > 0 && (
-            <View style={styles.statsContainer}>
-              <Card variant="default" padding="medium" style={styles.statCard}>
-                <View style={styles.statContent}>
-                  <View style={[styles.statIconContainer, { backgroundColor: colors.warning[50] }]}>
-                    <Ionicons name="sync-outline" size={28} color={colors.warning[600]} />
-                  </View>
-                  <View style={styles.statText}>
-                    <Typography variant="h2" style={styles.statNumber}>
-                      {pendientesSinc}
-                    </Typography>
-                    <Typography variant="caption" color="secondary">
-                      Pendientes de sincronizar
-                    </Typography>
-                  </View>
-                </View>
-              </Card>
-            </View>
-          )}
         </LinearGradient>
 
         {/* Contenido */}

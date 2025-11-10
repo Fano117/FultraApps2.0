@@ -4,10 +4,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '@/design-system';
 import { MainTabParamList } from './types';
 import HomeScreen from '@/screens/home/HomeScreen';
-import EntregasNavigator from './EntregasNavigator';
-import PendientesScreen from '@/apps/entregas/screens/PendientesScreen';
 import ProfileScreen from '@/screens/profile/ProfileScreen';
 import NotificationsScreen from '@/screens/notifications/NotificationsScreen';
+import EntregasTabNavigator from './EntregasTabNavigator';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -42,26 +41,6 @@ const MainTabNavigator: React.FC = () => {
         }}
       />
       <Tab.Screen
-        name="Entregas"
-        component={EntregasNavigator}
-        options={{
-          tabBarLabel: 'Entregas',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="cube" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Pendientes"
-        component={PendientesScreen}
-        options={{
-          tabBarLabel: 'Pendientes',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="sync" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
         name="Profile"
         component={ProfileScreen}
         options={{
@@ -69,6 +48,13 @@ const MainTabNavigator: React.FC = () => {
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person" size={size} color={color} />
           ),
+        }}
+      />
+      <Tab.Screen
+        name="Entregas"
+        component={EntregasTabNavigator}
+        options={{
+          tabBarButton: () => null,
         }}
       />
       <Tab.Screen
