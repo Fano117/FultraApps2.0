@@ -188,7 +188,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   clienteInfo: {
-    margin: spacing[4],
+    marginHorizontal: spacing[4],
+    marginTop: spacing[2],
+    marginBottom: spacing[2],
     gap: spacing[2],
   },
   clienteRow: {
@@ -201,7 +203,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: spacing[4],
-    paddingTop: 0,
+    paddingTop: spacing[2],
     paddingBottom: spacing[10],
   },
   ordenCard: {

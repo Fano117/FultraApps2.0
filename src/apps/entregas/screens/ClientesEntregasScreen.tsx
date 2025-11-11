@@ -189,6 +189,8 @@ const styles = StyleSheet.create({
   },
   filtrosSection: {
     padding: spacing[4],
+    paddingTop: spacing[2],
+    paddingBottom: spacing[3],
     backgroundColor: colors.white,
     marginBottom: spacing[2],
   },
@@ -211,6 +213,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: spacing[4],
+    paddingTop: spacing[2],
     paddingBottom: spacing[10],
   },
   clienteCard: {

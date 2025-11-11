@@ -163,6 +163,49 @@ const PendientesScreen: React.FC = () => {
           )}
         </View>
 
+        {item.articulos && item.articulos.length > 0 && (
+          <View style={styles.articulosSection}>
+            <View style={styles.articulosHeader}>
+              <Ionicons name="cube-outline" size={18} color={colors.primary[600]} />
+              <Typography variant="subtitle2" style={styles.articulosTitle}>
+                Artículos ({item.articulos.length})
+              </Typography>
+            </View>
+            {item.articulos.map((articulo, index) => (
+              <View key={`${articulo.id}-${index}`} style={styles.articuloItem}>
+                <View style={styles.articuloRow}>
+                  <Typography variant="body2" style={styles.articuloProducto}>
+                    {articulo.producto}
+                  </Typography>
+                  <View style={styles.articuloCantidades}>
+                    <Typography variant="body2" style={styles.cantidadEntregada}>
+                      {articulo.cantidadEntregada}
+                    </Typography>
+                    <Typography variant="caption" color="secondary">
+                      /{articulo.cantidadProgramada}
+                    </Typography>
+                  </View>
+                </View>
+                <Typography variant="caption" color="secondary" numberOfLines={2}>
+                  {articulo.descripcion}
+                </Typography>
+                <View style={styles.articuloFooter}>
+                  <Typography variant="caption" color="secondary">
+                    Peso: {articulo.peso} {articulo.unidadMedida}
+                  </Typography>
+                  {articulo.restante > 0 && (
+                    <View style={styles.restanteBadge}>
+                      <Typography variant="caption" style={styles.restanteText}>
+                        Restante: {articulo.restante}
+                      </Typography>
+                    </View>
+                  )}
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
         {puedeReintentar && (
           <View style={styles.actions}>
             <Button
@@ -266,6 +309,66 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: colors.error[700],
+  },
+  articulosSection: {
+    marginTop: spacing[4],
+    paddingTop: spacing[4],
+    borderTopWidth: 1,
+    borderTopColor: colors.border.light,
+  },
+  articulosHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    marginBottom: spacing[3],
+  },
+  articulosTitle: {
+    color: colors.primary[600],
+  },
+  articuloItem: {
+    padding: spacing[3],
+    backgroundColor: colors.background.secondary,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing[2],
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary[400],
+  },
+  articuloRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing[1],
+  },
+  articuloProducto: {
+    flex: 1,
+    fontWeight: '600',
+    color: colors.text.primary,
+  },
+  articuloCantidades: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginLeft: spacing[2],
+  },
+  cantidadEntregada: {
+    fontWeight: '700',
+    color: colors.success[600],
+    fontSize: 16,
+  },
+  articuloFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: spacing[2],
+  },
+  restanteBadge: {
+    backgroundColor: colors.warning[100],
+    paddingHorizontal: spacing[2],
+    paddingVertical: spacing[1],
+    borderRadius: borderRadius.sm,
+  },
+  restanteText: {
+    color: colors.warning[700],
+    fontWeight: '600',
   },
   actions: {
     marginTop: spacing[4],

@@ -30,13 +30,13 @@ class SyncService {
 
   async sincronizarEntrega(entrega: EntregaSync): Promise<boolean> {
     try {
-      console.log(`[SyncService] Sincronizando entrega: ${entrega.folio}`);
+      console.log(`[SyncService] 🔄 Iniciando sincronización de entrega: ${entrega.folio}`);
 
       await entregasStorageService.updateEntregaSync(entrega.id, {
         estado: EstadoSincronizacion.ENVIANDO,
       });
 
-      await entregasApiService.enviarEmbarqueEntrega({
+      const embarqueData = {
         ordenVenta: entrega.ordenVenta,
         folio: entrega.folio,
         tipoEntrega: entrega.tipoEntrega,
@@ -52,9 +52,20 @@ class SyncService {
         fechaEnvioServer: new Date(),
         enviadoServer: true,
         articulos: entrega.articulos,
-      });
+      };
 
-      console.log(`[SyncService] Datos de entrega enviados: ${entrega.folio}`);
+      console.log('========== ENVIAR ENTREGA - DATOS ==========');
+      console.log('Folio:', entrega.folio);
+      console.log('Tipo:', entrega.tipoEntrega);
+      console.log('Total imágenes evidencia:', entrega.imagenesEvidencia?.length || 0);
+      console.log('Total imágenes facturas:', entrega.imagenesFacturas?.length || 0);
+      console.log('Total imágenes incidencia:', entrega.imagenesIncidencia?.length || 0);
+      console.log('===========================================');
+
+      // PASO 1: Enviar datos de la entrega
+      console.log(`[SyncService] 📤 Enviando datos de entrega al servidor...`);
+      await entregasApiService.enviarEmbarqueEntrega(embarqueData);
+      console.log(`[SyncService] ✅ Datos de entrega enviados exitosamente: ${entrega.folio}`);
 
       await entregasStorageService.updateEntregaSync(entrega.id, {
         estado: EstadoSincronizacion.DATOS_ENVIADOS,
@@ -62,6 +73,7 @@ class SyncService {
         fechaEnvioServer: new Date(),
       });
 
+      // PASO 2: Verificar y enviar imágenes
       const todasImagenes = [
         ...entrega.imagenesEvidencia,
         ...entrega.imagenesFacturas,
@@ -69,10 +81,12 @@ class SyncService {
       ];
 
       if (todasImagenes.length === 0) {
+        console.log(`[SyncService] ℹ️ No hay imágenes para enviar, finalizando sincronización`);
         await this.finalizarSincronizacion(entrega.id);
         return true;
       }
 
+      console.log(`[SyncService] 📸 Enviando ${todasImagenes.length} imágenes al servidor...`);
       await entregasStorageService.updateEntregaSync(entrega.id, {
         estado: EstadoSincronizacion.IMAGENES_PENDIENTES,
       });
@@ -80,11 +94,12 @@ class SyncService {
       const imagenesEnviadas = await this.sincronizarImagenes(todasImagenes);
 
       if (imagenesEnviadas === todasImagenes.length) {
+        console.log(`[SyncService] ✅ Todas las imágenes (${imagenesEnviadas}) enviadas exitosamente`);
         await this.finalizarSincronizacion(entrega.id);
         return true;
       } else {
         console.warn(
-          `[SyncService] Solo se enviaron ${imagenesEnviadas} de ${todasImagenes.length} imágenes`
+          `[SyncService] ⚠️ Solo se enviaron ${imagenesEnviadas} de ${todasImagenes.length} imágenes`
         );
         await entregasStorageService.updateEntregaSync(entrega.id, {
           estado: EstadoSincronizacion.ERROR,
@@ -94,7 +109,7 @@ class SyncService {
         return false;
       }
     } catch (error: any) {
-      console.error(`[SyncService] Error sincronizando entrega ${entrega.folio}:`, error);
+      console.error(`[SyncService] ❌ Error sincronizando entrega ${entrega.folio}:`, error);
 
       await entregasStorageService.updateEntregaSync(entrega.id, {
         estado: EstadoSincronizacion.ERROR,
@@ -108,15 +123,19 @@ class SyncService {
 
   private async sincronizarImagenes(imagenes: ImagenDTO[]): Promise<number> {
     let imagenesEnviadas = 0;
+    const totalImagenes = imagenes.length;
 
-    for (const imagen of imagenes) {
+    for (let i = 0; i < imagenes.length; i++) {
+      const imagen = imagenes[i];
+
       if (imagen.enviado) {
         imagenesEnviadas++;
+        console.log(`[SyncService] ⏭️ Imagen ya enviada (${i + 1}/${totalImagenes}): ${imagen.nombre}`);
         continue;
       }
 
       try {
-        console.log(`[SyncService] Subiendo imagen: ${imagen.nombre}`);
+        console.log(`[SyncService] 📤 Subiendo imagen (${i + 1}/${totalImagenes}): ${imagen.nombre}`);
 
         const exito = await entregasApiService.subirImagenEvidencia(
           {
@@ -130,15 +149,16 @@ class SyncService {
         if (exito) {
           imagenesEnviadas++;
           imagen.enviado = true;
-          console.log(`[SyncService] Imagen subida exitosamente: ${imagen.nombre}`);
+          console.log(`[SyncService] ✅ Imagen subida (${imagenesEnviadas}/${totalImagenes}): ${imagen.nombre}`);
         } else {
-          console.warn(`[SyncService] Falló la subida de imagen: ${imagen.nombre}`);
+          console.warn(`[SyncService] ❌ Falló la subida de imagen (${i + 1}/${totalImagenes}): ${imagen.nombre}`);
         }
       } catch (error) {
-        console.error(`[SyncService] Error subiendo imagen ${imagen.nombre}:`, error);
+        console.error(`[SyncService] ❌ Error subiendo imagen ${imagen.nombre}:`, error);
       }
     }
 
+    console.log(`[SyncService] 📊 Resultado: ${imagenesEnviadas}/${totalImagenes} imágenes enviadas`);
     return imagenesEnviadas;
   }
 
@@ -249,7 +269,7 @@ class SyncService {
     const hasInternet = await this.checkInternetConnection();
 
     if (!hasInternet) {
-      console.log('[SyncService] Sin conexión, guardando para sincronizar después');
+      console.log('[SyncService] ❌ Sin conexión a internet, guardando para sincronizar después');
 
       await entregasStorageService.saveEntregaSync({
         ...entrega,
@@ -266,36 +286,43 @@ class SyncService {
       };
     }
 
-    console.log('[SyncService] Enviando entrega directamente (con internet)');
+    console.log('[SyncService] ✅ Internet detectado, enviando entrega directamente al servidor...');
+    console.log(`[SyncService] 📦 Entrega: ${entrega.folio} | Tipo: ${entrega.tipoEntrega}`);
 
     try {
+      // Remover de la lista de pendientes antes de enviar
+      await entregasStorageService.removeEntrega(entrega.ordenVenta, entrega.folio);
+
+      // Guardar temporalmente en sincronización para mostrar progreso
       await entregasStorageService.saveEntregaSync({
         ...entrega,
         estado: EstadoSincronizacion.ENVIANDO,
       });
 
-      await entregasStorageService.removeEntrega(entrega.ordenVenta, entrega.folio);
-
+      // Sincronizar datos e imágenes
       const exitoso = await this.sincronizarEntrega(entrega);
 
       if (exitoso) {
+        console.log(`[SyncService] ✅ Entrega ${entrega.folio} enviada exitosamente (datos e imágenes)`);
         return {
           success: true,
           entregasSincronizadas: 1,
           entregasConError: 0,
-          mensaje: 'Entrega sincronizada exitosamente',
+          mensaje: 'Entrega enviada exitosamente',
         };
       } else {
+        console.log(`[SyncService] ⚠️ Error al enviar entrega ${entrega.folio}, se reintentará`);
         return {
           success: false,
           entregasSincronizadas: 0,
           entregasConError: 1,
-          mensaje: 'Error al sincronizar. Se reintentará automáticamente.',
+          mensaje: 'Error al enviar. Se reintentará automáticamente.',
         };
       }
     } catch (error: any) {
-      console.error('[SyncService] Error en enviarEntregaDirecto:', error);
+      console.error(`[SyncService] ❌ Error crítico en enviarEntregaDirecto (${entrega.folio}):`, error);
 
+      // Guardar en AsyncStorage con estado de error para reintento
       await entregasStorageService.saveEntregaSync({
         ...entrega,
         estado: EstadoSincronizacion.ERROR,
@@ -307,7 +334,7 @@ class SyncService {
         success: false,
         entregasSincronizadas: 0,
         entregasConError: 1,
-        mensaje: 'Error al sincronizar. Se reintentará automáticamente.',
+        mensaje: 'Error al enviar. Se reintentará automáticamente.',
       };
     }
   }
