@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Card, Typography, Badge, colors, spacing, borderRadius } from '@/design-system';
 import { useAppSelector, useAppDispatch } from '@/shared/hooks';
@@ -29,6 +29,13 @@ const ClientesEntregasScreen: React.FC = () => {
     loadData();
   }, []);
 
+  // Recargar datos cuando la pantalla recibe foco (después de mock testing)
+  useFocusEffect(
+    React.useCallback(() => {
+      loadData();
+    }, [])
+  );
+
   const loadData = async () => {
     await dispatch(loadLocalData());
     await dispatch(fetchEmbarques());
@@ -44,7 +51,10 @@ const ClientesEntregasScreen: React.FC = () => {
   ];
 
   const handleClientePress = (cliente: ClienteEntregaDTO) => {
-    navigation.navigate('OrdenesVenta', { cliente });
+    navigation.navigate('OrdenesVenta', { 
+      clienteId: cliente.cuentaCliente,
+      clienteNombre: cliente.cliente
+    });
   };
 
   const renderEstadistica = (titulo: string, valor: number, color: string) => (
@@ -125,7 +135,18 @@ const ClientesEntregasScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Typography variant="h5">Clientes - Entregas</Typography>
+        <View style={styles.headerContent}>
+          <Typography variant="h5">Clientes - Entregas</Typography>
+          {__DEV__ && (
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('MockTestingScreen')}
+              style={styles.mockButton}
+            >
+              <Ionicons name="flask" size={24} color={colors.primary[600]} />
+              <Typography variant="caption" color="primary">Mock</Typography>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       <View style={styles.estadisticasContainer}>
@@ -176,6 +197,17 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderBottomWidth: 1,
     borderBottomColor: colors.border.light,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  mockButton: {
+    alignItems: 'center',
+    padding: spacing[2],
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.primary[50],
   },
   estadisticasContainer: {
     flexDirection: 'row',

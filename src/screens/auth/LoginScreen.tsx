@@ -164,6 +164,32 @@ const LoginScreen: React.FC = () => {
     }
   };
 
+  // Solo para desarrollo - simular login exitoso
+  const handleDevLogin = async () => {
+    try {
+      console.log('🔧 Iniciando login de desarrollo...');
+      
+      // Simular datos de usuario para desarrollo
+      const mockUserData = {
+        sub: 'dev-user-001',
+        name: 'Usuario de Desarrollo',
+        email: 'dev@fultraapps.com',
+        role: 'admin'
+      };
+      
+      console.log('🔧 Estableciendo usuario mock:', mockUserData);
+      dispatch(setUser(mockUserData));
+      
+      console.log('🔧 Marcando como autenticado...');
+      dispatch(setAuthenticated(true));
+      
+      console.log('🔧 Login de desarrollo completado exitosamente');
+    } catch (error) {
+      console.error('🔧 Error en dev login:', error);
+      Alert.alert('Error', 'Error en login de desarrollo: ' + error?.message);
+    }
+  };
+
   return (
     <LinearGradient
       colors={[colors.primary[500], colors.primary[700], colors.primary[900]]}
@@ -337,6 +363,31 @@ const LoginScreen: React.FC = () => {
                 </Typography>
               </View>
             </Button>
+
+            {/* Botón de desarrollo - solo visible en modo desarrollo */}
+            {__DEV__ && (
+              <View style={{ marginTop: 16 }}>
+                <Button
+                  variant="outline"
+                  size="medium"
+                  fullWidth
+                  onPress={handleDevLogin}
+                  style={{ 
+                    backgroundColor: 'rgba(255,255,255,0.2)', 
+                    borderWidth: 2, 
+                    borderColor: colors.white,
+                    paddingVertical: 16
+                  }}
+                >
+                  <View style={styles.buttonContent}>
+                    <MaterialCommunityIcons name="cog" size={20} color={colors.white} style={styles.buttonIcon} />
+                    <Typography variant="body2" style={{ color: colors.white, fontWeight: 'bold' }}>
+                      🔧 DESARROLLO - SALTEAR LOGIN
+                    </Typography>
+                  </View>
+                </Button>
+              </View>
+            )}
 
             <View style={styles.securityContainer}>
               <MaterialCommunityIcons name="shield-check" size={16} color={colors.white} />

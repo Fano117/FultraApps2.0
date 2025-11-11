@@ -19,10 +19,68 @@ type NavigationProp = NativeStackNavigationProp<EntregasStackParamList, 'Ordenes
 const OrdenesVentaScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteParams>();
-  const { cliente } = route.params;
+  const { clienteId, clienteNombre } = route.params;
+
+  // Mock data - en una implementación real, esto vendría del store o API
+  const mockEntregas: EntregaDTO[] = [
+    {
+      ordenVenta: 'OV-001',
+      folio: 'EMB123',
+      tipoEntrega: 'ENTREGA',
+      estado: 'PENDIENTE',
+      cargaCuentaCliente: `${clienteId}`,
+      articulos: [
+        {
+          id: 1,
+          nombreCarga: 'CARGA-1',
+          nombreOrdenVenta: 'OV-001',
+          producto: 'Producto A',
+          cantidadProgramada: 50,
+          cantidadEntregada: 0,
+          restante: 50,
+          peso: 25.5,
+          unidadMedida: 'kg',
+          descripcion: 'Descripción del producto A'
+        },
+        {
+          id: 2,
+          nombreCarga: 'CARGA-1',
+          nombreOrdenVenta: 'OV-001',
+          producto: 'Producto B',
+          cantidadProgramada: 25,
+          cantidadEntregada: 0,
+          restante: 25,
+          peso: 15.0,
+          unidadMedida: 'kg',
+          descripcion: 'Descripción del producto B'
+        }
+      ]
+    },
+    {
+      ordenVenta: 'OV-002',
+      folio: 'EMB124',
+      tipoEntrega: 'ENTREGA',
+      estado: 'PENDIENTE',
+      cargaCuentaCliente: `${clienteId}`,
+      articulos: [
+        {
+          id: 3,
+          nombreCarga: 'CARGA-1',
+          nombreOrdenVenta: 'OV-002',
+          producto: 'Producto C',
+          cantidadProgramada: 30,
+          cantidadEntregada: 0,
+          restante: 30,
+          peso: 20.0,
+          unidadMedida: 'kg',
+          descripcion: 'Descripción del producto C'
+        }
+      ]
+    }
+  ];
 
   const handleOrdenPress = (entrega: EntregaDTO) => {
-    navigation.navigate('DetalleOrden', { cliente, entrega });
+    navigation.navigate('DetalleOrden', { entregaId: entrega.ordenVenta });
   };
 
   const getEstadoColor = (estado: string) => {
@@ -125,7 +183,7 @@ const OrdenesVentaScreen: React.FC = () => {
         <View style={styles.headerContent}>
           <Typography variant="h6">Órdenes de Venta</Typography>
           <Typography variant="caption" color="secondary">
-            {cliente.cliente}
+            {clienteNombre}
           </Typography>
         </View>
       </View>
@@ -133,24 +191,24 @@ const OrdenesVentaScreen: React.FC = () => {
       <Card variant="outline" padding="medium" style={styles.clienteInfo}>
         <View style={styles.clienteRow}>
           <Ionicons name="person-outline" size={20} color={colors.text.secondary} />
-          <Typography variant="body2">{cliente.cliente}</Typography>
+          <Typography variant="body2">{clienteNombre}</Typography>
         </View>
         <View style={styles.clienteRow}>
           <Ionicons name="card-outline" size={20} color={colors.text.secondary} />
           <Typography variant="body2">
-            {cliente.cuentaCliente}
+            {clienteId}
           </Typography>
         </View>
         <View style={styles.clienteRow}>
           <Ionicons name="location-outline" size={20} color={colors.text.secondary} />
           <Typography variant="body2" style={styles.direccionText}>
-            {cliente.direccionEntrega}
+            Dirección disponible en detalle de orden
           </Typography>
         </View>
       </Card>
 
       <FlatList
-        data={cliente.entregas}
+        data={mockEntregas}
         renderItem={renderOrden}
         keyExtractor={(item) => `${item.ordenVenta}-${item.folio}`}
         contentContainerStyle={styles.listContent}

@@ -21,7 +21,7 @@ const clientId = 'fultraTrackReactNative';
 const clientSecret = 'Fu1traTr9ck2025#$';
 
 const redirectUri = AuthSession.makeRedirectUri({
-  scheme: APP_AUTH_REDIRECT_SCHEME,
+  scheme: undefined, // Permite que Expo use el esquema automático en desarrollo
   path: 'oauth2redirect',
 });
 

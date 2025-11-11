@@ -5,6 +5,7 @@ import ClientesEntregasScreen from '@/apps/entregas/screens/ClientesEntregasScre
 import OrdenesVentaScreen from '@/apps/entregas/screens/OrdenesVentaScreen';
 import DetalleOrdenScreen from '@/apps/entregas/screens/DetalleOrdenScreen';
 import FormularioEntregaScreen from '@/apps/entregas/screens/FormularioEntregaScreen';
+import MockTestingScreen from '../apps/entregas/mocks/MockTestingScreen';
 
 const Stack = createNativeStackNavigator<EntregasStackParamList>();
 
@@ -34,6 +35,11 @@ const EntregasNavigator: React.FC = () => {
         name="FormularioEntrega"
         component={FormularioEntregaScreen}
         options={{ title: 'Registro de Entrega' }}
+      />
+      <Stack.Screen
+        name="MockTestingScreen"
+        component={MockTestingScreen}
+        options={{ title: 'Mock Testing' }}
       />
     </Stack.Navigator>
   );

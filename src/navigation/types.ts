@@ -20,11 +20,17 @@ export type EntregasTabParamList = {
 
 export type EntregasStackParamList = {
   ClientesEntregas: undefined;
-  OrdenesVenta: { cliente: ClienteEntregaDTO };
-  DetalleOrden: { cliente: ClienteEntregaDTO; entrega: EntregaDTO };
-  FormularioEntrega: { clienteCarga: string; entrega: EntregaDTO; tipoRegistro: TipoRegistro };
-  EntregasList: undefined;
-  EntregaDetail: { clienteCarga: string; entrega: EntregaDTO };
+  OrdenesVenta: { 
+    clienteId: string; 
+    clienteNombre: string; 
+  };
+  DetalleOrden: { 
+    entregaId: string; 
+  };
+  FormularioEntrega: { 
+    entregaId: string; 
+  };
+  MockTestingScreen: undefined;
 };
 
 declare global {

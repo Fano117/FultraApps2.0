@@ -21,9 +21,47 @@ type NavigationProp = NativeStackNavigationProp<EntregasStackParamList, 'Detalle
 const DetalleOrdenScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteParams>();
-  const { cliente, entrega } = route.params;
+  const { entregaId } = route.params;
 
   const [selectedTipo, setSelectedTipo] = useState<TipoRegistro | null>(null);
+
+  // Mock data - en una implementación real, esto vendría del store o API usando entregaId
+  const entregaData = {
+    ordenVenta: 'OV-001',
+    folio: 'EMB123',
+    tipoEntrega: 'ENTREGA',
+    estado: 'PENDIENTE',
+    cliente: 'Restaurante El Buen Sabor',
+    direccionEntrega: 'Av. Insurgentes Sur 1602, Col. Crédito Constructor',
+    latitud: '19.3687',
+    longitud: '-99.1710',
+    articulos: [
+      {
+        id: 1,
+        nombreCarga: 'CARGA-1',
+        nombreOrdenVenta: 'OV-001',
+        producto: 'Producto A',
+        cantidadProgramada: 50,
+        cantidadEntregada: 0,
+        restante: 50,
+        peso: 25.5,
+        unidadMedida: 'kg',
+        descripcion: 'Descripción del producto A'
+      },
+      {
+        id: 2,
+        nombreCarga: 'CARGA-1',
+        nombreOrdenVenta: 'OV-001',
+        producto: 'Producto B',
+        cantidadProgramada: 25,
+        cantidadEntregada: 0,
+        restante: 25,
+        peso: 15.0,
+        unidadMedida: 'kg',
+        descripcion: 'Descripción del producto B'
+      }
+    ]
+  };
 
   const handleTipoEntregaSelect = (tipo: TipoRegistro) => {
     setSelectedTipo(tipo);
@@ -39,7 +77,7 @@ const DetalleOrdenScreen: React.FC = () => {
     try {
       const entregasSync = await entregasStorageService.getEntregasSync();
       const yaExiste = entregasSync.some(
-        e => e.ordenVenta === entrega.ordenVenta && e.folio === entrega.folio
+        e => e.ordenVenta === entregaData.ordenVenta && e.folio === entregaData.folio
       );
 
       if (yaExiste) {
@@ -60,17 +98,14 @@ const DetalleOrdenScreen: React.FC = () => {
       selectedTipo === TipoRegistro.COMPLETO ? 'Entrega Completa' :
       selectedTipo === TipoRegistro.PARCIAL ? 'Entrega Parcial' :
       'No Entregado',
-      '¿Confirma que se entregó la orden completa?',
+      '¿Confirma que quiere proceder con este tipo de entrega?',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Continuar',
           onPress: () => {
-            const clienteCarga = `${cliente.carga}-${cliente.cuentaCliente}`;
             navigation.navigate('FormularioEntrega', {
-              clienteCarga,
-              entrega,
-              tipoRegistro: selectedTipo,
+              entregaId: entregaId
             });
           },
         },
@@ -122,18 +157,18 @@ const DetalleOrdenScreen: React.FC = () => {
           </Typography>
           <View style={styles.infoRow}>
             <Ionicons name="person-outline" size={18} color={colors.text.secondary} />
-            <Typography variant="body2">{cliente.cliente}</Typography>
+            <Typography variant="body2">{entregaData.cliente}</Typography>
           </View>
           <View style={styles.infoRow}>
             <Ionicons name="card-outline" size={18} color={colors.text.secondary} />
             <Typography variant="caption" color="secondary">
-              {cliente.cuentaCliente}
+              {entregaId}
             </Typography>
           </View>
           <View style={styles.infoRow}>
             <Ionicons name="location-outline" size={18} color={colors.text.secondary} />
             <Typography variant="caption" color="secondary" style={styles.direccionText}>
-              {cliente.direccionEntrega}
+              {entregaData.direccionEntrega}
             </Typography>
           </View>
         </Card>
@@ -144,7 +179,7 @@ const DetalleOrdenScreen: React.FC = () => {
           </Typography>
           <View style={styles.ordenRow}>
             <Typography variant="h5" style={{ color: colors.primary[600] }}>
-              {entrega.ordenVenta}
+              {entregaData.ordenVenta}
             </Typography>
             <Badge variant="info" size="medium">
               ENTREGA
@@ -155,19 +190,19 @@ const DetalleOrdenScreen: React.FC = () => {
               <Typography variant="caption" color="secondary">
                 Folio:
               </Typography>
-              <Typography variant="subtitle2">{entrega.folio}</Typography>
+              <Typography variant="subtitle2">{entregaData.folio}</Typography>
             </View>
             <View style={styles.infoGridItem}>
               <Typography variant="caption" color="secondary">
                 Carga:
               </Typography>
-              <Typography variant="subtitle2">{cliente.carga}</Typography>
+              <Typography variant="subtitle2">CARGA-1</Typography>
             </View>
           </View>
           <View style={styles.totalesRow}>
             <View style={styles.totalItem}>
               <Typography variant="h4">
-                {entrega.articulos.length}
+                {entregaData.articulos.length}
               </Typography>
               <Typography variant="caption" color="secondary">
                 Artículos
@@ -175,7 +210,7 @@ const DetalleOrdenScreen: React.FC = () => {
             </View>
             <View style={styles.totalItem}>
               <Typography variant="h4">
-                {entrega.articulos.reduce((sum, art) => sum + art.cantidadProgramada, 0)}
+                {entregaData.articulos.reduce((sum, art) => sum + art.cantidadProgramada, 0)}
               </Typography>
               <Typography variant="caption" color="secondary">
                 Cantidad Total
@@ -183,7 +218,7 @@ const DetalleOrdenScreen: React.FC = () => {
             </View>
             <View style={styles.totalItem}>
               <Typography variant="h4">
-                {entrega.articulos.reduce((sum, art) => sum + art.peso, 0).toFixed(2)}
+                {entregaData.articulos.reduce((sum, art) => sum + art.peso, 0).toFixed(2)}
               </Typography>
               <Typography variant="caption" color="secondary">
                 Peso (kg)
@@ -196,7 +231,7 @@ const DetalleOrdenScreen: React.FC = () => {
           <Typography variant="subtitle1" style={styles.sectionTitle}>
             Artículos a Entregar
           </Typography>
-          {entrega.articulos.map((articulo) => (
+          {entregaData.articulos.map((articulo) => (
             <View key={articulo.id} style={styles.articuloCard}>
               <View style={styles.articuloHeader}>
                 <View style={styles.articuloInfo}>
@@ -243,14 +278,14 @@ const DetalleOrdenScreen: React.FC = () => {
               <Card
                 variant={selectedTipo === item.tipo ? 'elevated' : 'outline'}
                 padding="medium"
-                style={[
+                style={StyleSheet.flatten([
                   styles.tipoCard,
                   selectedTipo === item.tipo && {
                     backgroundColor: item.bgColor,
                     borderColor: item.color,
                     borderWidth: 2,
-                  },
-                ]}
+                  }
+                ])}
               >
                 <View style={styles.tipoContent}>
                   <View
