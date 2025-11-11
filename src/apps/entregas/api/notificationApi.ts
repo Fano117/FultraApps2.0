@@ -1,5 +1,6 @@
 import { apiService } from '@/shared/services';
 import { ApiResponse } from '../types';
+import { mockConfig, mockNotificationApi } from '../mocks';
 
 interface NotificationSubscription {
   choferId: string;
@@ -11,6 +12,11 @@ class NotificationApiService {
   async subscribeToNotifications(
     subscription: NotificationSubscription
   ): Promise<ApiResponse<null>> {
+    if (mockConfig.isMockEnabled()) {
+      console.log('[NotificationApi] Using MOCK data for subscribeToNotifications');
+      return mockNotificationApi.subscribeToNotifications(subscription);
+    }
+
     try {
       return await apiService.post<ApiResponse<null>>(
         '/mobile/notifications/subscribe',
@@ -23,6 +29,11 @@ class NotificationApiService {
   }
 
   async unsubscribeFromNotifications(deviceId: string): Promise<ApiResponse<null>> {
+    if (mockConfig.isMockEnabled()) {
+      console.log('[NotificationApi] Using MOCK data for unsubscribeFromNotifications');
+      return mockNotificationApi.unsubscribeFromNotifications(deviceId);
+    }
+
     try {
       return await apiService.post<ApiResponse<null>>('/mobile/notifications/unsubscribe', {
         deviceId,

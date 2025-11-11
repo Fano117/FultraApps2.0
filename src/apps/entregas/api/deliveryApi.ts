@@ -6,6 +6,7 @@ import {
   ConfirmacionEntrega, 
   ApiResponse 
 } from '../types';
+import { mockConfig, mockDeliveryApi } from '../mocks';
 
 class DeliveryApiService {
   async getEntregas(params: {
@@ -14,6 +15,11 @@ class DeliveryApiService {
     status?: string;
     date?: string;
   }): Promise<PaginatedResponse<Entrega>> {
+    if (mockConfig.isMockEnabled()) {
+      console.log('[DeliveryApi] Using MOCK data for getEntregas');
+      return mockDeliveryApi.getEntregas(params);
+    }
+
     try {
       const queryParams = new URLSearchParams({
         page: (params.page || 1).toString(),
@@ -32,6 +38,11 @@ class DeliveryApiService {
   }
 
   async getEntregaById(id: string): Promise<Entrega> {
+    if (mockConfig.isMockEnabled()) {
+      console.log('[DeliveryApi] Using MOCK data for getEntregaById');
+      return mockDeliveryApi.getEntregaById(id);
+    }
+
     try {
       return await apiService.get<Entrega>(`/mobile/entregas/${id}`);
     } catch (error) {
@@ -41,6 +52,11 @@ class DeliveryApiService {
   }
 
   async getRutaOptimizada(choferId: string, date?: string): Promise<RutaOptimizada> {
+    if (mockConfig.isMockEnabled()) {
+      console.log('[DeliveryApi] Using MOCK data for getRutaOptimizada');
+      return mockDeliveryApi.getRutaOptimizada(choferId, date);
+    }
+
     try {
       const params = date ? `?date=${date}` : '';
       return await apiService.get<RutaOptimizada>(
@@ -57,6 +73,11 @@ class DeliveryApiService {
     confirmacion: ConfirmacionEntrega,
     onProgress?: (progress: number) => void
   ): Promise<ApiResponse<{ entregaId: string }>> {
+    if (mockConfig.isMockEnabled()) {
+      console.log('[DeliveryApi] Using MOCK data for confirmarEntrega');
+      return mockDeliveryApi.confirmarEntrega(id, confirmacion, onProgress);
+    }
+
     try {
       const formData = new FormData();
       

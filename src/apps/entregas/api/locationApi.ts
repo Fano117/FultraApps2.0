@@ -1,8 +1,14 @@
 import { apiService } from '@/shared/services';
 import { UbicacionChofer, ApiResponse } from '../types';
+import { mockConfig, mockLocationApi } from '../mocks';
 
 class LocationApiService {
   async updateLocation(ubicacion: UbicacionChofer): Promise<ApiResponse<null>> {
+    if (mockConfig.isMockEnabled()) {
+      console.log('[LocationApi] Using MOCK data for updateLocation');
+      return mockLocationApi.updateLocation(ubicacion);
+    }
+
     try {
       const payload = {
         choferId: ubicacion.choferId,
@@ -21,6 +27,11 @@ class LocationApiService {
   }
 
   async updateLocationBatch(ubicaciones: UbicacionChofer[]): Promise<ApiResponse<null>> {
+    if (mockConfig.isMockEnabled()) {
+      console.log('[LocationApi] Using MOCK data for updateLocationBatch');
+      return mockLocationApi.updateLocationBatch(ubicaciones);
+    }
+
     try {
       const payload = ubicaciones.map((ubicacion) => ({
         choferId: ubicacion.choferId,

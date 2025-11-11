@@ -3,6 +3,7 @@ import * as TaskManager from 'expo-task-manager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LocationUpdate, UbicacionChofer } from '../types';
 import { locationApiService } from '../api';
+import { mockConfig, mockLocationSimulator } from '../mocks';
 
 const LOCATION_TASK_NAME = 'background-location-task';
 const LOCATION_QUEUE_KEY = '@location_queue';
@@ -14,6 +15,11 @@ class LocationService {
   private choferId: string | null = null;
 
   async requestPermissions(): Promise<boolean> {
+    if (mockConfig.isMockLocationEnabled()) {
+      console.log('[LocationService] Mock location enabled, skipping real permissions');
+      return true;
+    }
+
     try {
       const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
       
@@ -36,6 +42,10 @@ class LocationService {
   }
 
   async hasPermissions(): Promise<boolean> {
+    if (mockConfig.isMockLocationEnabled()) {
+      return true;
+    }
+
     try {
       const { status } = await Location.getForegroundPermissionsAsync();
       return status === 'granted';
@@ -46,6 +56,11 @@ class LocationService {
   }
 
   async getCurrentLocation(): Promise<LocationUpdate | null> {
+    if (mockConfig.isMockLocationEnabled()) {
+      console.log('[LocationService] Using mock location');
+      return mockLocationSimulator.getCurrentLocation();
+    }
+
     try {
       const hasPermission = await this.hasPermissions();
       if (!hasPermission) {
