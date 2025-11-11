@@ -20,12 +20,20 @@ class ApiService {
 
   private setupInterceptors(): void {
     this.api.interceptors.request.use(
-      async (config) => {
-        const token = await authService.getAccessToken();
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
+      async (requestConfig) => {
+        // Agregar headers de desarrollo si la autenticación está desactivada
+        if (config.devCredentials?.authDisabled) {
+          requestConfig.headers['X-Dev-User'] = config.devCredentials.username;
+          requestConfig.headers['X-Dev-Mode'] = 'true';
+          console.log('🔧 Usando modo desarrollo con usuario:', config.devCredentials.username);
+        } else {
+          // Modo normal con token OAuth
+          const token = await authService.getAccessToken();
+          if (token) {
+            requestConfig.headers.Authorization = `Bearer ${token}`;
+          }
         }
-        return config;
+        return requestConfig;
       },
       (error) => {
         return Promise.reject(error);
