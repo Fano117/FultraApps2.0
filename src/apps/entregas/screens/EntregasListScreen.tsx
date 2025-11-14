@@ -68,6 +68,28 @@ const EntregasListScreen: React.FC = () => {
     navigation.navigate('EntregaDetail', { clienteCarga, entrega });
   };
 
+  const handleTrackingPress = (cliente: ClienteEntregaDTO, entrega: EntregaDTO) => {
+    // Verificar que tenemos las coordenadas necesarias
+    if (!cliente.latitud || !cliente.longitud) {
+      Alert.alert(
+        'Sin Coordenadas',
+        'Esta entrega no tiene coordenadas de destino. No se puede iniciar el tracking.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    navigation.navigate('EntregaTracking', {
+      entregaId: entrega.id || 0,
+      folio: entrega.folio,
+      puntoEntrega: {
+        latitud: parseFloat(cliente.latitud),
+        longitud: parseFloat(cliente.longitud),
+      },
+      nombreCliente: cliente.cliente,
+    });
+  };
+
   const getEstadoColor = (estado: string) => {
     switch (estado) {
       case EstadoEntrega.PENDIENTE:
@@ -92,11 +114,12 @@ const EntregasListScreen: React.FC = () => {
     );
 
     return (
-      <TouchableOpacity
-        onPress={() => handleEntregaPress(cliente, entrega)}
-        activeOpacity={0.7}
-      >
-        <Card variant="outline" padding="medium" style={styles.entregaCard}>
+      <Card variant="outline" padding="medium" style={styles.entregaCard}>
+        <TouchableOpacity
+          onPress={() => handleEntregaPress(cliente, entrega)}
+          activeOpacity={0.7}
+          style={styles.entregaMainContent}
+        >
           <View style={styles.entregaHeader}>
             <View style={styles.entregaInfo}>
               <Typography variant="subtitle1">{entrega.folio}</Typography>
@@ -133,8 +156,20 @@ const EntregasListScreen: React.FC = () => {
           <View style={styles.chevronContainer}>
             <Ionicons name="chevron-forward" size={20} color={colors.primary[600]} />
           </View>
-        </Card>
-      </TouchableOpacity>
+        </TouchableOpacity>
+
+        {/* Botón de Tracking */}
+        <TouchableOpacity
+          style={styles.trackingButton}
+          onPress={() => handleTrackingPress(cliente, entrega)}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="navigate" size={20} color={colors.white} />
+          <Typography variant="body2" style={styles.trackingButtonText}>
+            Ver Tracking
+          </Typography>
+        </TouchableOpacity>
+      </Card>
     );
   };
 
@@ -176,8 +211,8 @@ const EntregasListScreen: React.FC = () => {
 
         {isExpanded && (
           <View style={styles.entregasContainer}>
-            {item.entregas.map((entrega) => (
-              <React.Fragment key={`${entrega.ordenVenta}-${entrega.folio}`}>
+            {item.entregas.map((entrega, entregaIndex) => (
+              <React.Fragment key={`${entrega.ordenVenta}-${entrega.folio}-${entregaIndex}`}>
                 {renderEntrega(entrega, item)}
               </React.Fragment>
             ))}
@@ -194,7 +229,7 @@ const EntregasListScreen: React.FC = () => {
       <FlatList
         data={clientesFiltrados}
         renderItem={renderCliente}
-        keyExtractor={(item) => `${item.carga}-${item.cuentaCliente}`}
+        keyExtractor={(item, index) => `${item.carga}-${item.cuentaCliente}-${index}`}
         contentContainerStyle={styles.listContent}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={loadData} />}
         ListEmptyComponent={
@@ -256,6 +291,10 @@ const styles = StyleSheet.create({
   },
   entregaCard: {
     position: 'relative',
+    overflow: 'visible',
+  },
+  entregaMainContent: {
+    width: '100%',
   },
   entregaHeader: {
     flexDirection: 'row',
@@ -268,6 +307,7 @@ const styles = StyleSheet.create({
   },
   entregaDetails: {
     gap: spacing[2],
+    marginBottom: spacing[12],
   },
   detailRow: {
     flexDirection: 'row',
@@ -277,7 +317,22 @@ const styles = StyleSheet.create({
   chevronContainer: {
     position: 'absolute',
     right: spacing[4],
-    bottom: spacing[4],
+    bottom: spacing[16],
+  },
+  trackingButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing[2],
+    backgroundColor: colors.primary[600],
+    paddingVertical: spacing[3],
+    paddingHorizontal: spacing[4],
+    borderRadius: borderRadius.lg,
+    marginTop: spacing[3],
+  },
+  trackingButtonText: {
+    color: colors.white,
+    fontWeight: '600',
   },
   emptyContainer: {
     flex: 1,

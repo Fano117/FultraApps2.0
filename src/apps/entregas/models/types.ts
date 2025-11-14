@@ -61,6 +61,7 @@ export interface ArticuloEntregaDTO {
 }
 
 export interface EntregaDTO {
+  id?: number;
   ordenVenta: string;
   folio: string;
   tipoEntrega: string;

@@ -11,6 +11,8 @@ export type MainTabParamList = {
   Entregas: NavigatorScreenParams<EntregasTabParamList>;
   Profile: undefined;
   Notifications: undefined;
+  TestData: undefined;
+  TestFunctions: undefined;
 };
 
 export type EntregasTabParamList = {
@@ -20,17 +22,29 @@ export type EntregasTabParamList = {
 
 export type EntregasStackParamList = {
   ClientesEntregas: undefined;
-  OrdenesVenta: { 
-    clienteId: string; 
-    clienteNombre: string; 
+  OrdenesVenta: { cliente: ClienteEntregaDTO };
+  DetalleOrden: { cliente: ClienteEntregaDTO; entrega: EntregaDTO };
+  FormularioEntrega: { clienteCarga: string; entrega: EntregaDTO; tipoRegistro: TipoRegistro; geofenceId?: string | null };
+  EntregasList: undefined;
+  EntregaDetail: { clienteCarga: string; entrega: EntregaDTO };
+  EntregaTracking: {
+    entregaId: number;
+    folio: string;
+    puntoEntrega: { latitud: number; longitud: number };
+    nombreCliente: string;
   };
-  DetalleOrden: { 
-    entregaId: string; 
+  RutaEntrega: {
+    destino: { latitude: number; longitude: number };
+    cliente: string;
+    direccion: string;
+    ordenVenta: string;
+    geofenceId?: string;
   };
-  FormularioEntrega: { 
-    entregaId: string; 
-  };
-  MockTestingScreen: undefined;
+  DebugApi: undefined;
+  TestApiTransformation: undefined;
+  SimulacionEntrega: undefined;
+  GestionEntregas: undefined;
+  EstadoEntrega: { geofenceId: string };
 };
 
 declare global {

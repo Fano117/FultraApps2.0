@@ -70,6 +70,43 @@ const COLONIAS_GDL = [
   'San Juan de Dios',
 ];
 
+// Datos específicos para Zacatecas, Zacatecas
+const CALLES_ZACATECAS = [
+  'Av. González Ortega',
+  'Av. Hidalgo',
+  'Av. López Velarde',
+  'Av. Torreón',
+  'Callejón de las Campanas',
+  'Calle Tacuba',
+  'Calle Genaro Codina',
+  'Av. Universidad',
+  'Blvd. López Portillo',
+  'Av. Pedro Coronel',
+  'Calle García Salinas',
+  'Av. Ramón López Velarde',
+  'Calle Dr. Ignacio Hierro',
+  'Av. México',
+  'Calle Allende',
+];
+
+const COLONIAS_ZACATECAS = [
+  'Centro Histórico',
+  'Lomas de la Soledad',
+  'Lomas de Bracho',
+  'Colonia Guadalupe',
+  'Tierra y Libertad',
+  'Las Arboledas',
+  'El Orito',
+  'Sierra de Alica',
+  'Lomas del Patrocinio',
+  'Colonia CTM',
+  'Francisco Villa',
+  'Benito Juárez',
+  'Villas de Guadalupe',
+  'Lomas del Campestre',
+  'El Vergel',
+];
+
 const PRODUCTOS_COMUNES = [
   { nombre: 'Cemento Portland', unidad: 'bulto', pesoPromedio: 50 },
   { nombre: 'Varilla 3/8"', unidad: 'pieza', pesoPromedio: 5.3 },
@@ -120,6 +157,15 @@ class TestDataGenerator {
   }
 
   /**
+   * Generar teléfono aleatorio para Zacatecas (formato mexicano)
+   */
+  private generatePhoneZacatecas(): string {
+    const area = '492'; // Zacatecas
+    const number = Math.floor(Math.random() * 9000000) + 1000000;
+    return `${area}${number}`;
+  }
+
+  /**
    * Generar coordenadas aleatorias en Guadalajara
    */
   private generateCoordinates(): { latitud: number; longitud: number } {
@@ -130,6 +176,24 @@ class TestDataGenerator {
     // Rango de ~30km alrededor
     const latOffset = (Math.random() - 0.5) * 0.3;
     const lonOffset = (Math.random() - 0.5) * 0.3;
+
+    return {
+      latitud: baseLat + latOffset,
+      longitud: baseLon + lonOffset,
+    };
+  }
+
+  /**
+   * Generar coordenadas aleatorias en Zacatecas, Zacatecas
+   */
+  private generateCoordinatesZacatecas(): { latitud: number; longitud: number } {
+    // Centro de Zacatecas: 22.7709, -102.5832
+    const baseLat = 22.7709;
+    const baseLon = -102.5832;
+
+    // Rango de ~15km alrededor de Zacatecas
+    const latOffset = (Math.random() - 0.5) * 0.15;
+    const lonOffset = (Math.random() - 0.5) * 0.15;
 
     return {
       latitud: baseLat + latOffset,
@@ -158,6 +222,32 @@ class TestDataGenerator {
         ciudad: 'Guadalajara',
         estado: 'Jalisco',
         codigoPostal: String(44000 + Math.floor(Math.random() * 900)),
+        coordenadas: coords,
+      },
+    };
+  }
+
+  /**
+   * Generar cliente de prueba específico para Zacatecas
+   */
+  generateClienteZacatecas(index: number): ClienteTest {
+    const nombreEmpresa = NOMBRES_EMPRESAS[index % NOMBRES_EMPRESAS.length];
+    const calle = CALLES_ZACATECAS[Math.floor(Math.random() * CALLES_ZACATECAS.length)];
+    const colonia = COLONIAS_ZACATECAS[Math.floor(Math.random() * COLONIAS_ZACATECAS.length)];
+    const coords = this.generateCoordinatesZacatecas();
+
+    return {
+      nombre: `${nombreEmpresa} ${index + 1}`,
+      rfc: this.generateRFC(),
+      telefono: this.generatePhoneZacatecas(),
+      email: `contacto${index + 1}@${nombreEmpresa.toLowerCase().replace(/\s/g, '')}.com`,
+      direccion: {
+        calle,
+        numero: String(Math.floor(Math.random() * 9000) + 100),
+        colonia,
+        ciudad: 'Zacatecas',
+        estado: 'Zacatecas',
+        codigoPostal: String(98000 + Math.floor(Math.random() * 900)),
         coordenadas: coords,
       },
     };
@@ -371,6 +461,51 @@ class TestDataGenerator {
         .map((e) => e.cliente.direccion.coordenadas);
 
       const ruta = this.generateRutaGPS(almacen, destinos);
+      rutas.push(ruta);
+    }
+
+    return { clientes, entregas, rutas: rutas.length > 0 ? rutas : undefined };
+  }
+
+  /**
+   * Generar conjunto completo de datos de prueba específicos para Zacatecas
+   */
+  generateTestDataSetZacatecas(config: TestDataConfig): {
+    clientes: ClienteTest[];
+    entregas: EntregaTest[];
+    rutas?: RutaGPSTest[];
+  } {
+    const clientes: ClienteTest[] = [];
+    const entregas: EntregaTest[] = [];
+    const rutas: RutaGPSTest[] = [];
+
+    // Generar clientes específicos para Zacatecas
+    for (let i = 0; i < config.numClientes; i++) {
+      const cliente = this.generateClienteZacatecas(i);
+      clientes.push(cliente);
+
+      // Generar entregas para este cliente
+      for (let j = 0; j < config.numEntregasPorCliente; j++) {
+        const fecha = new Date(config.fechaInicio);
+        fecha.setDate(fecha.getDate() + Math.floor(Math.random() * 7)); // Siguiente semana
+
+        const entrega = this.generateEntrega(
+          cliente,
+          fecha,
+          i * config.numEntregasPorCliente + j
+        );
+        entregas.push(entrega);
+      }
+    }
+
+    // Generar ruta GPS si se solicita (centro de Zacatecas)
+    if (config.generarRutaGPS) {
+      const almacenZacatecas = { latitud: 22.7709, longitud: -102.5832 }; // Centro Zacatecas
+      const destinos = entregas
+        .slice(0, Math.min(10, entregas.length))
+        .map((e) => e.cliente.direccion.coordenadas);
+
+      const ruta = this.generateRutaGPS(almacenZacatecas, destinos);
       rutas.push(ruta);
     }
 

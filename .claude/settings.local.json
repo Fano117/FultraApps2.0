@@ -8,7 +8,9 @@
       "Bash(npm uninstall:*)",
       "Bash(npm run type-check:*)",
       "Bash(npx tsc:*)",
-      "Bash(npm run android:*)"
+      "Bash(npm run android:*)",
+      "Bash(curl:*)",
+      "Bash(echo:*)"
     ],
     "deny": [],
     "ask": []

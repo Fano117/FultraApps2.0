@@ -5,7 +5,16 @@ import ClientesEntregasScreen from '@/apps/entregas/screens/ClientesEntregasScre
 import OrdenesVentaScreen from '@/apps/entregas/screens/OrdenesVentaScreen';
 import DetalleOrdenScreen from '@/apps/entregas/screens/DetalleOrdenScreen';
 import FormularioEntregaScreen from '@/apps/entregas/screens/FormularioEntregaScreen';
-import MockTestingScreen from '../apps/entregas/mocks/MockTestingScreen';
+import EntregasListScreen from '@/apps/entregas/screens/EntregasListScreen';
+import EntregaDetailScreen from '@/apps/entregas/screens/EntregaDetailScreen';
+import EntregaTrackingScreen from '@/screens/EntregaTrackingScreen';
+import DebugApiScreen from '@/apps/entregas/screens/DebugApiScreen';
+import { TestApiTransformationScreen } from '@/apps/entregas/screens/TestApiTransformationScreen';
+import { DeliveryMapScreen } from '@/apps/entregas/screens/DeliveryMapScreen';
+import { SimulacionEntregaScreen } from '@/apps/entregas/screens/SimulacionEntregaScreen';
+import { GestionEntregasScreen } from '@/apps/entregas/screens/GestionEntregasScreen';
+import { EstadoEntregaScreen } from '@/apps/entregas/screens/EstadoEntregaScreen';
+import RutaEntregaScreen from '@/apps/entregas/screens/RutaEntregaScreen';
 
 const Stack = createNativeStackNavigator<EntregasStackParamList>();
 
@@ -37,9 +46,49 @@ const EntregasNavigator: React.FC = () => {
         options={{ title: 'Registro de Entrega' }}
       />
       <Stack.Screen
-        name="MockTestingScreen"
-        component={MockTestingScreen}
-        options={{ title: 'Mock Testing' }}
+        name="EntregasList"
+        component={EntregasListScreen}
+        options={{ title: 'Entregas', headerShown: true }}
+      />
+      <Stack.Screen
+        name="EntregaDetail"
+        component={EntregaDetailScreen}
+        options={{ title: 'Detalle de Entrega', headerShown: true }}
+      />
+      <Stack.Screen
+        name="DebugApi"
+        component={DebugApiScreen}
+        options={{ title: 'API Debug', headerShown: true }}
+      />
+      <Stack.Screen
+        name="TestApiTransformation"
+        component={TestApiTransformationScreen}
+        options={{ title: 'Test API Transformation', headerShown: true }}
+      />
+      <Stack.Screen
+        name="SimulacionEntrega"
+        component={SimulacionEntregaScreen}
+        options={{ title: 'Simulación de Entregas', headerShown: false }}
+      />
+      <Stack.Screen
+        name="GestionEntregas"
+        component={GestionEntregasScreen}
+        options={{ title: 'Gestión de Entregas', headerShown: false }}
+      />
+      <Stack.Screen
+        name="EstadoEntrega"
+        component={EstadoEntregaScreen}
+        options={{ title: 'Estado de Entrega', headerShown: false }}
+      />
+      <Stack.Screen
+        name="RutaEntrega"
+        component={RutaEntregaScreen}
+        options={{ title: 'Ruta de Entrega', headerShown: false }}
+      />
+      <Stack.Screen
+        name="EntregaTracking"
+        component={DeliveryMapScreen}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );

@@ -7,6 +7,8 @@ import HomeScreen from '@/screens/home/HomeScreen';
 import ProfileScreen from '@/screens/profile/ProfileScreen';
 import NotificationsScreen from '@/screens/notifications/NotificationsScreen';
 import EntregasTabNavigator from './EntregasTabNavigator';
+import TestDataAdminScreen from '@/screens/TestDataAdminScreen';
+import TestFunctionsScreen from '@/screens/TestFunctionsScreen';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
@@ -62,6 +64,26 @@ const MainTabNavigator: React.FC = () => {
         component={NotificationsScreen}
         options={{
           tabBarButton: () => null,
+        }}
+      />
+      <Tab.Screen
+        name="TestData"
+        component={TestDataAdminScreen}
+        options={{
+          tabBarLabel: 'Testing',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="flask" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="TestFunctions"
+        component={TestFunctionsScreen}
+        options={{
+          tabBarLabel: 'Tests',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="bug" size={size} color={color} />
+          ),
         }}
       />
     </Tab.Navigator>

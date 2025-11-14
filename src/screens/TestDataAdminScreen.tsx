@@ -28,6 +28,7 @@ export default function TestDataAdminScreen() {
   const [numEntregas, setNumEntregas] = useState(3);
   const [generarRuta, setGenerarRuta] = useState(true);
   const [simularEstados, setSimularEstados] = useState(true);
+  const [ubicacionZacatecas, setUbicacionZacatecas] = useState(false);
 
   useEffect(() => {
     checkExistingData();
@@ -44,9 +45,11 @@ export default function TestDataAdminScreen() {
   };
 
   const handleLoadData = async () => {
+    const ubicacion = ubicacionZacatecas ? 'Zacatecas, Zac.' : 'Guadalajara, Jal.';
+    
     Alert.alert(
       'Cargar Datos de Prueba',
-      `Se generarán:\n• ${numClientes} clientes\n• ${numClientes * numEntregas} entregas\n• ${generarRuta ? 'Rutas GPS' : 'Sin rutas'}\n\n¿Continuar?`,
+      `Se generarán:\n• ${numClientes} clientes en ${ubicacion}\n• ${numClientes * numEntregas} entregas\n• ${generarRuta ? 'Rutas GPS' : 'Sin rutas'}\n\n¿Continuar?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -62,12 +65,15 @@ export default function TestDataAdminScreen() {
                 simularEstados,
               };
 
-              const result = await testDataService.loadTestData(config);
+              // Usar servicio específico según la ubicación seleccionada
+              const result = ubicacionZacatecas 
+                ? await testDataService.loadTestDataZacatecas(config)
+                : await testDataService.loadTestData(config);
 
               if (result.success) {
                 Alert.alert(
                   '✅ Datos Cargados',
-                  `Clientes: ${result.data.clientesCreados}\nEntregas: ${result.data.entregasCreadas}\nRutas: ${result.data.rutasGeneradas}\n\nTiempo: ${result.data.tiempoEjecucion}ms`,
+                  `Ubicación: ${ubicacion}\nClientes: ${result.data.clientesCreados}\nEntregas: ${result.data.entregasCreadas}\nRutas: ${result.data.rutasGeneradas}\n\nTiempo: ${result.data.tiempoEjecucion}ms`,
                   [{ text: 'OK' }]
                 );
                 await checkExistingData();
@@ -236,9 +242,44 @@ export default function TestDataAdminScreen() {
           />
         </View>
 
+        <View style={styles.switchRow}>
+          <Text style={styles.configLabel}>📍 Ubicar en Zacatecas</Text>
+          <Switch
+            value={ubicacionZacatecas}
+            onValueChange={(value) => {
+              setUbicacionZacatecas(value);
+              // Si se activa Zacatecas, usar configuración optimizada
+              if (value) {
+                setNumClientes(5);
+                setNumEntregas(1);
+                setGenerarRuta(true);
+              }
+            }}
+            disabled={loading}
+            trackColor={{ false: '#ccc', true: '#10B981' }}
+          />
+        </View>
+
+        {ubicacionZacatecas && (
+          <View style={styles.zacatecasInfo}>
+            <Text style={styles.zacatecasInfoTitle}>🏛️ Ubicaciones de Zacatecas</Text>
+            <Text style={styles.zacatecasInfoText}>
+              Se generarán entregas en lugares emblemáticos:{'\n'}
+              • Plaza de Armas (Catedral){'\n'}
+              • Cerro de la Bufa{'\n'}
+              • Mercado González Ortega{'\n'}
+              • Campus Universitario{'\n'}
+              • Boulevard López Portillo
+            </Text>
+          </View>
+        )}
+
         <View style={styles.summary}>
           <Text style={styles.summaryText}>
             Total: {numClientes * numEntregas} entregas
+          </Text>
+          <Text style={styles.summaryLocation}>
+            📍 {ubicacionZacatecas ? 'Zacatecas, Zacatecas' : 'Guadalajara, Jalisco'}
           </Text>
         </View>
       </View>
@@ -302,7 +343,8 @@ export default function TestDataAdminScreen() {
         <Text style={styles.cardTitle}>ℹ️ Información</Text>
         <Text style={styles.infoText}>
           • Los datos se guardan en el backend y base de datos{'\n'}
-          • Se generan clientes con direcciones en Guadalajara{'\n'}
+          • Guadalajara: Se generan clientes con direcciones en Jalisco{'\n'}
+          • Zacatecas: Se generan clientes con direcciones en Zacatecas{'\n'}
           • Las entregas incluyen productos realistas{'\n'}
           • Las rutas GPS simulan movimiento real{'\n'}
           • Puedes limpiar los datos en cualquier momento
@@ -454,6 +496,13 @@ const styles = StyleSheet.create({
     color: '#6B46C1',
     textAlign: 'center',
   },
+  summaryLocation: {
+    fontSize: 12,
+    color: '#10B981',
+    textAlign: 'center',
+    marginTop: 4,
+    fontWeight: '500',
+  },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -497,5 +546,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#666',
     lineHeight: 20,
+  },
+  zacatecasInfo: {
+    marginTop: 8,
+    padding: 12,
+    backgroundColor: '#F0FDF4',
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#10B981',
+  },
+  zacatecasInfoTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#10B981',
+    marginBottom: 4,
+  },
+  zacatecasInfoText: {
+    fontSize: 12,
+    color: '#059669',
+    lineHeight: 16,
   },
 });

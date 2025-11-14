@@ -7,13 +7,14 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Card, Typography, Badge, colors, spacing, borderRadius } from '@/design-system';
+import { Card, Typography, Badge, Button, colors, spacing, borderRadius } from '@/design-system';
 import { useAppSelector, useAppDispatch } from '@/shared/hooks';
-import { fetchEmbarques, loadLocalData } from '../store/entregasSlice';
+import { fetchEmbarques, fetchEmbarquesWithTestData, loadLocalData, crearDatosPrueba } from '../store/entregasSlice';
 import { ClienteEntregaDTO } from '../models';
 import { EntregasStackParamList } from '@/navigation/types';
+import { mobileApiService } from '../services';
 
 type NavigationProp = NativeStackNavigationProp<EntregasStackParamList, 'ClientesEntregas'>;
 
@@ -29,16 +30,39 @@ const ClientesEntregasScreen: React.FC = () => {
     loadData();
   }, []);
 
-  // Recargar datos cuando la pantalla recibe foco (después de mock testing)
-  useFocusEffect(
-    React.useCallback(() => {
-      loadData();
-    }, [])
-  );
-
   const loadData = async () => {
-    await dispatch(loadLocalData());
-    await dispatch(fetchEmbarques());
+    try {
+      console.log('[CLIENTES SCREEN] 📱 Cargando datos con nuevos endpoints...');
+      await dispatch(loadLocalData());
+      await dispatch(fetchEmbarques());
+    } catch (error) {
+      console.error('[CLIENTES SCREEN] ❌ Error cargando datos:', error);
+    }
+  };
+
+  const loadTestData = async () => {
+    try {
+      console.log('[CLIENTES SCREEN] 🧪 Cargando datos de prueba...');
+      await dispatch(loadLocalData());
+      await dispatch(fetchEmbarquesWithTestData());
+    } catch (error) {
+      console.error('[CLIENTES SCREEN] ❌ Error cargando datos de prueba:', error);
+    }
+  };
+
+  const crearNuevosDatosPrueba = async () => {
+    try {
+      console.log('[CLIENTES SCREEN] 🏗️ Creando nuevos datos de prueba...');
+      await dispatch(crearDatosPrueba({
+        cantidadClientes: 3,
+        cantidadEntregas: 5,
+        generarRutaGPS: true
+      }));
+      // Recargar datos después de crear
+      await loadData();
+    } catch (error) {
+      console.error('[CLIENTES SCREEN] ❌ Error creando datos de prueba:', error);
+    }
   };
 
   const filtros: { label: FiltroEstado; count: number; color: string }[] = [
@@ -51,10 +75,7 @@ const ClientesEntregasScreen: React.FC = () => {
   ];
 
   const handleClientePress = (cliente: ClienteEntregaDTO) => {
-    navigation.navigate('OrdenesVenta', { 
-      clienteId: cliente.cuentaCliente,
-      clienteNombre: cliente.cliente
-    });
+    navigation.navigate('OrdenesVenta', { cliente });
   };
 
   const renderEstadistica = (titulo: string, valor: number, color: string) => (
@@ -135,17 +156,32 @@ const ClientesEntregasScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <Typography variant="h5">Clientes - Entregas</Typography>
-          {__DEV__ && (
-            <TouchableOpacity 
-              onPress={() => navigation.navigate('MockTestingScreen')}
-              style={styles.mockButton}
-            >
-              <Ionicons name="flask" size={24} color={colors.primary[600]} />
-              <Typography variant="caption" color="primary">Mock</Typography>
-            </TouchableOpacity>
-          )}
+        <Typography variant="h5">Clientes - Entregas</Typography>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            onPress={loadTestData}
+            style={[styles.debugButton, { marginRight: spacing[2] }]}
+          >
+            <Ionicons name="flask-outline" size={20} color={colors.secondary[600]} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('TestApiTransformation')}
+            style={[styles.debugButton, { marginRight: spacing[2] }]}
+          >
+            <Ionicons name="code-working-outline" size={18} color={colors.info[600]} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('DebugApi')}
+            style={styles.debugButton}
+          >
+            <Ionicons name="bug-outline" size={20} color={colors.primary[600]} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('SimulacionEntrega')}
+            style={[styles.debugButton, { backgroundColor: colors.secondary[50] }]}
+          >
+            <Ionicons name="car-outline" size={20} color={colors.secondary[600]} />
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -168,7 +204,7 @@ const ClientesEntregasScreen: React.FC = () => {
       <FlatList
         data={clientes}
         renderItem={renderCliente}
-        keyExtractor={(item) => `${item.carga}-${item.cuentaCliente}`}
+        keyExtractor={(item, index) => `${item.carga}-${item.cuentaCliente}-${index}`}
         contentContainerStyle={styles.listContent}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={loadData} />}
         ListEmptyComponent={
@@ -177,9 +213,52 @@ const ClientesEntregasScreen: React.FC = () => {
             <Typography variant="h6" color="secondary" align="center" style={styles.emptyText}>
               No hay clientes con entregas
             </Typography>
-            <Typography variant="body2" color="secondary" align="center">
-              Desliza hacia abajo para actualizar
+            <Typography variant="body2" color="secondary" align="center" style={styles.emptyDescription}>
+              El endpoint /Mobile/entregas devuelve array vacío
             </Typography>
+            <Typography variant="caption" color="secondary" align="center" style={styles.emptyHint}>
+              Cambios del backend:
+              {'\n'}• EstatusEmbarqueId = 4 (En ruta)
+              {'\n'}• EsTestData = false para datos de prueba
+              {'\n'}• Procesamiento uniforme de embarques
+              {'\n'}• Usuario: alfredo.gallegos
+            </Typography>
+            <Button
+              variant="primary"
+              size="small"
+              onPress={() => navigation.navigate('DebugApi')}
+              style={styles.debugTestButton}
+              leftIcon={<Ionicons name="bug-outline" size={16} color={colors.white} />}
+            >
+              Probar API
+            </Button>
+            <Button
+              variant="ghost"
+              size="small"
+              onPress={() => navigation.navigate('SimulacionEntrega')}
+              style={styles.debugTestButton}
+              leftIcon={<Ionicons name="car-outline" size={16} color={colors.secondary[600]} />}
+            >
+              🚚 Simulación de Entregas
+            </Button>
+            <Button
+              variant="secondary"
+              size="small"
+              onPress={crearNuevosDatosPrueba}
+              style={styles.debugTestButton}
+              leftIcon={<Ionicons name="add-outline" size={16} color={colors.secondary[600]} />}
+            >
+              Crear Nuevos Datos
+            </Button>
+            <Button
+              variant="ghost"
+              size="small"
+              onPress={loadTestData}
+              style={styles.debugTestButton}
+              leftIcon={<Ionicons name="flask-outline" size={16} color={colors.neutral[600]} />}
+            >
+              Cargar Datos Existentes
+            </Button>
           </View>
         }
       />
@@ -193,21 +272,21 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.secondary,
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     padding: spacing[4],
     backgroundColor: colors.white,
     borderBottomWidth: 1,
     borderBottomColor: colors.border.light,
   },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  mockButton: {
-    alignItems: 'center',
+  debugButton: {
     padding: spacing[2],
     borderRadius: borderRadius.md,
-    backgroundColor: colors.primary[50],
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   estadisticasContainer: {
     flexDirection: 'row',
@@ -279,6 +358,16 @@ const styles = StyleSheet.create({
   emptyText: {
     marginTop: spacing[4],
     marginBottom: spacing[2],
+  },
+  emptyDescription: {
+    marginBottom: spacing[2],
+  },
+  emptyHint: {
+    marginBottom: spacing[4],
+    lineHeight: 16,
+  },
+  debugTestButton: {
+    marginTop: spacing[2],
   },
 });
 

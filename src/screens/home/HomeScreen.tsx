@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Dimensions, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -85,34 +85,6 @@ const HomeScreen: React.FC = () => {
     }
   };
 
-  const handleMockTesting = () => {
-    console.log('🧪 Navegando a MockTestingScreen...');
-    Alert.alert(
-      'Mock Testing',
-      '¿Quieres acceder al simulador de pruebas?',
-      [
-        {
-          text: 'Cancelar',
-          style: 'cancel',
-        },
-        {
-          text: 'Abrir',
-          onPress: () => {
-            // Navegar primero a entregas, donde estará el botón de acceso directo
-            (navigation.navigate as any)('Entregas');
-            Alert.alert(
-              'Información', 
-              'Usa el botón "Mock" en la pantalla de Entregas para acceder al simulador',
-              [{ text: 'OK' }]
-            );
-          },
-        },
-      ]
-    );
-  };
-
-  const isDevelopment = __DEV__;
-
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView
@@ -134,17 +106,7 @@ const HomeScreen: React.FC = () => {
                 {user?.name || 'Usuario'}
               </Typography>
             </View>
-            <View style={styles.headerRightContent}>
-              <Avatar name={user?.name} size="large" />
-              {isDevelopment && (
-                <TouchableOpacity
-                  onPress={handleMockTesting}
-                  style={styles.mockTestingButton}
-                >
-                  <Ionicons name="flask" size={24} color={colors.white} />
-                </TouchableOpacity>
-              )}
-            </View>
+            <Avatar name={user?.name} size="large" />
           </View>
         </LinearGradient>
 
@@ -242,20 +204,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing[8],
-  },
-  headerRightContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[3],
-  },
-  mockTestingButton: {
-    width: 48,
-    height: 48,
-    borderRadius: borderRadius.full,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: spacing[3],
   },
   greeting: {
     opacity: 0.9,

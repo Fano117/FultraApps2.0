@@ -338,6 +338,8 @@ const FormularioEntregaScreen: React.FC = () => {
   const handleGuardar = async () => {
     if (!validarFormulario()) return;
 
+    setLoading(true);
+    
     // VALIDACIÓN CRÍTICA: Verificar si el folio ya está en sincronización
     try {
       const entregasSync = await entregasStorageService.getEntregasSync();
@@ -351,15 +353,16 @@ const FormularioEntregaScreen: React.FC = () => {
           'Este folio ya ha sido registrado y está en proceso de sincronización. No se puede realizar la entrega nuevamente.',
           [{ text: 'OK', onPress: () => navigation.goBack() }]
         );
+        setLoading(false);
         return;
       }
     } catch (error) {
       console.error('[FormularioEntrega] Error verificando entregas sync:', error);
       Alert.alert('Error', 'No se pudo verificar el estado de sincronización');
+      setLoading(false);
       return;
     }
 
-    setLoading(true);
     try {
       const articulosData =
         tipoRegistro === TipoRegistro.NO_ENTREGADO
@@ -681,7 +684,7 @@ const FormularioEntregaScreen: React.FC = () => {
           loading={loading}
           disabled={loading || !ubicacion}
         >
-          Guardar Entrega
+          {tipoRegistro === TipoRegistro.NO_ENTREGADO ? 'Registrar No Entregado' : 'Guardar Entrega'}
         </Button>
       </View>
     </SafeAreaView>
