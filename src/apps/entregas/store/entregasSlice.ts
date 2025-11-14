@@ -86,11 +86,47 @@ const entregasSlice = createSlice({
         state.error = action.payload as string;
       })
       .addCase(loadLocalData.fulfilled, (state, action) => {
-        state.clientes = action.payload.clientes;
-        state.entregasSync = action.payload.entregasSync;
+        const { clientes, entregasSync } = action.payload;
+
+        // Crear un Set de entregas que están en sync para búsqueda rápida
+        const entregasEnSync = new Set(
+          entregasSync.map(e => `${e.ordenVenta}-${e.folio}`)
+        );
+
+        // Actualizar el estado de las entregas que están en sync
+        state.clientes = clientes.map(cliente => ({
+          ...cliente,
+          entregas: cliente.entregas.map(entrega => {
+            const key = `${entrega.ordenVenta}-${entrega.folio}`;
+            if (entregasEnSync.has(key)) {
+              return {
+                ...entrega,
+                estado: 'PENDIENTE_ENVIO'
+              };
+            }
+            return entrega;
+          })
+        }));
+
+        state.entregasSync = entregasSync;
       })
       .addCase(saveEntregaLocal.fulfilled, (state, action) => {
         state.entregasSync.push(action.payload);
+
+        // Actualizar el estado de la entrega en el array de clientes
+        state.clientes = state.clientes.map(cliente => ({
+          ...cliente,
+          entregas: cliente.entregas.map(entrega => {
+            if (entrega.ordenVenta === action.payload.ordenVenta &&
+                entrega.folio === action.payload.folio) {
+              return {
+                ...entrega,
+                estado: 'PENDIENTE_ENVIO'
+              };
+            }
+            return entrega;
+          })
+        }));
       });
   },
 });

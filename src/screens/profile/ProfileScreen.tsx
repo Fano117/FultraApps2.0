@@ -51,27 +51,6 @@ const ProfileScreen: React.FC = () => {
     }
   };
 
-  const handleClearCache = () => {
-    Alert.alert(
-      'Limpiar caché',
-      '¿Estás seguro de que deseas limpiar la caché local? Esto eliminará todas las entregas pendientes.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Limpiar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await entregasStorageService.clearAllData();
-              Alert.alert('Éxito', 'Caché limpiada correctamente');
-            } catch (error) {
-              Alert.alert('Error', 'No se pudo limpiar la caché');
-            }
-          },
-        },
-      ]
-    );
-  };
 
   const handleClearAllData = () => {
     Alert.alert(
@@ -132,13 +111,6 @@ const ProfileScreen: React.FC = () => {
       onPress: () => {},
     },
     {
-      icon: 'trash-outline',
-      title: 'Limpiar Caché',
-      subtitle: 'Eliminar datos locales',
-      onPress: handleClearCache,
-      danger: true,
-    },
-    {
       icon: 'nuclear-outline',
       title: 'Eliminar Datos',
       subtitle: 'Eliminar todo el storage de Redux',
@@ -181,7 +153,7 @@ const ProfileScreen: React.FC = () => {
                       {item.badge && item.badge > 0 && (
                         <View style={styles.badge}>
                           <Typography variant="caption" color="inverse" style={styles.badgeText}>
-                            {item.badge > 99 ? '99+' : `${item.badge}`}
+                            {item.badge > 99 ? '99+' : item.badge.toString()}
                           </Typography>
                         </View>
                       )}

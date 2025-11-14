@@ -35,16 +35,70 @@ const ClientesEntregasScreen: React.FC = () => {
   };
 
   const filtros: { label: FiltroEstado; count: number; color: string }[] = [
-    { label: 'Pendientes', count: clientes.reduce((sum, c) => sum + c.entregas.length, 0), color: colors.warning[500] },
+    {
+      label: 'Pendientes',
+      count: clientes.reduce((sum, c) =>
+        sum + c.entregas.filter(e => e.estado === 'PENDIENTE').length, 0
+      ),
+      color: colors.warning[500]
+    },
     { label: 'Pend. Envío', count: entregasSync.length, color: colors.error[500] },
-    { label: 'Entregadas', count: 0, color: colors.success[500] },
-    { label: 'Enviadas', count: 0, color: colors.neutral[400] },
-    { label: 'No Entregadas', count: 0, color: colors.secondary[500] },
+    {
+      label: 'Entregadas',
+      count: clientes.reduce((sum, c) =>
+        sum + c.entregas.filter(e =>
+          e.estado === 'ENTREGADO_COMPLETO' || e.estado === 'ENTREGADO_PARCIAL'
+        ).length, 0
+      ),
+      color: colors.success[500]
+    },
+    {
+      label: 'Enviadas',
+      count: clientes.reduce((sum, c) =>
+        sum + c.entregas.filter(e => e.estado === 'ENVIADO').length, 0
+      ),
+      color: colors.neutral[400]
+    },
+    {
+      label: 'No Entregadas',
+      count: clientes.reduce((sum, c) =>
+        sum + c.entregas.filter(e => e.estado === 'NO_ENTREGADO').length, 0
+      ),
+      color: colors.secondary[500]
+    },
     { label: 'Todos', count: clientes.reduce((sum, c) => sum + c.entregas.length, 0), color: colors.primary[500] },
   ];
 
   const handleClientePress = (cliente: ClienteEntregaDTO) => {
     navigation.navigate('OrdenesVenta', { cliente });
+  };
+
+  const getClientesFiltrados = (): ClienteEntregaDTO[] => {
+    if (filtroActivo === 'Todos') {
+      return clientes;
+    }
+
+    return clientes
+      .map(cliente => ({
+        ...cliente,
+        entregas: cliente.entregas.filter(entrega => {
+          switch (filtroActivo) {
+            case 'Pendientes':
+              return entrega.estado === 'PENDIENTE';
+            case 'Pend. Envío':
+              return entrega.estado === 'PENDIENTE_ENVIO';
+            case 'Entregadas':
+              return entrega.estado === 'ENTREGADO_COMPLETO' || entrega.estado === 'ENTREGADO_PARCIAL';
+            case 'Enviadas':
+              return entrega.estado === 'ENVIADO';
+            case 'No Entregadas':
+              return entrega.estado === 'NO_ENTREGADO';
+            default:
+              return true;
+          }
+        })
+      }))
+      .filter(cliente => cliente.entregas.length > 0);
   };
 
   const renderEstadistica = (titulo: string, valor: number, color: string) => (
@@ -130,8 +184,8 @@ const ClientesEntregasScreen: React.FC = () => {
 
       <View style={styles.estadisticasContainer}>
         {renderEstadistica('Total OV', clientes.reduce((sum, c) => sum + c.entregas.length, 0), colors.primary[600])}
-        {renderEstadistica('Pendientes', clientes.reduce((sum, c) => sum + c.entregas.length, 0), colors.warning[600])}
-        {renderEstadistica('Entregados', 0, colors.success[600])}
+        {renderEstadistica('Pendientes', clientes.reduce((sum, c) => sum + c.entregas.filter(e => e.estado === 'PENDIENTE').length, 0), colors.warning[600])}
+        {renderEstadistica('Entregados', clientes.reduce((sum, c) => sum + c.entregas.filter(e => e.estado === 'ENTREGADO_COMPLETO' || e.estado === 'ENTREGADO_PARCIAL').length, 0), colors.success[600])}
         {renderEstadistica('Pendientes Envío', entregasSync.length, colors.error[600])}
       </View>
 
@@ -145,7 +199,7 @@ const ClientesEntregasScreen: React.FC = () => {
       </View>
 
       <FlatList
-        data={clientes}
+        data={getClientesFiltrados()}
         renderItem={renderCliente}
         keyExtractor={(item) => `${item.carga}-${item.cuentaCliente}`}
         contentContainerStyle={styles.listContent}
