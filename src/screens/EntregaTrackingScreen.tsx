@@ -698,10 +698,10 @@ const EntregaTrackingScreen: React.FC<EntregaTrackingScreenProps> = () => {
                   <Text style={styles.logMessage}>{log.message}</Text>
                 </View>
               ))
-            }
+            )}
           </ScrollView>
         </View>
-      }
+      )}
 
       {/* Panel de información y controles mejorado */}
       <ScrollView style={styles.infoPanel}>
