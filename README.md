@@ -104,6 +104,21 @@ FultraApps/
 - **axios** - Cliente HTTP
 - **@react-native-community/netinfo** - Detección de conectividad
 
+### Mapas y Navegación
+- **react-native-maps** - Componentes de mapa nativos
+- **HERE Maps API v8** - Servicios de ruteo y navegación ([Documentación](https://developer.here.com/documentation/routing-api/dev_guide/index.html))
+- **HERE Traffic API v7** - Información de tráfico en tiempo real ([Documentación](https://developer.here.com/documentation/traffic-api/dev_guide/index.html))
+- **HERE Geocoding API v7** - Búsqueda y geocodificación ([Documentación](https://developer.here.com/documentation/geocoding-search-api/dev_guide/index.html))
+- **@here/flexpolyline** - Decodificación de polylines ([GitHub](https://github.com/heremaps/flexible-polyline))
+
+#### Servicios HERE Maps Implementados
+- ✅ **RoutingService** - Cálculo de rutas óptimas con tráfico en tiempo real
+- ✅ **HereTrafficService** - Detección de incidentes y flujo de tráfico
+- ✅ **HereNavigationService** - Navegación paso a paso en tercera persona
+- ✅ **GeofenceService** - Geocercas circulares y monitoreo de proximidad
+
+**Documentación Completa**: Ver [README_HERE_MAPS.md](./README_HERE_MAPS.md)
+
 ## 📋 Prerequisitos
 
 - Node.js 18+
