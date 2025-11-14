@@ -107,16 +107,7 @@ FultraApps/
 ## 📋 Prerequisitos
 
 - Node.js 18+
-- npm o yarn
-- Expo CLI (`npm install -g expo-cli`)
-- Para iOS: Xcode 14+
-- Para Android: Android Studio
 
-## 🚀 Instalación
-
-### 1. Clonar el repositorio
-
-```bash
 git clone https://github.com/tu-usuario/FultraApps.git
 cd FultraApps
 ```
@@ -133,11 +124,7 @@ npm install
 cp .env.example .env
 ```
 
-Edita `.env` con tus credenciales:
-
-```env
 API_URL=https://aplicaciones.fultra.net/FultraTrackService/api
-API_KEY=tu-api-key
 OAUTH_ISSUER=https://identity.fultra.net
 OAUTH_CLIENT_ID=fultraTrackReactNative
 OAUTH_CLIENT_SECRET=tu-client-secret
@@ -161,21 +148,9 @@ npm run ios
 # Web
 npm run web
 ```
-
 #### Producción
 
-```bash
-# Build para Android
-eas build --platform android
-
-# Build para iOS
-eas build --platform ios
-```
-
-## 📱 Funcionalidades por Pantalla
-
-### 🔐 Login Screen
-- Autenticación OAuth2 con Identity Server
+###  Login Screen
 - Interfaz con gradiente y branding
 - Manejo de errores de autenticación
 - Redirección automática si ya está autenticado
@@ -217,53 +192,18 @@ eas build --platform ios
 - Estadísticas personales
 - Opciones de configuración
 - Limpiar caché local
-- Cerrar sesión con confirmación
 
 ## 🔒 Seguridad
-
-### Buenas Prácticas Implementadas
-
-✅ **Autenticación Segura**
-- OAuth2/OpenID Connect
-- Tokens con expiración
 - Refresh tokens automáticos
-- Logout con revocación
 
 ✅ **Almacenamiento Seguro**
-- AsyncStorage para datos persistentes
-- No se almacenan contraseñas en el dispositivo
-- Tokens encriptados
-
-✅ **Validación de Datos**
-- Validación en cliente y servidor
-- Sanitización de inputs
-- Prevención de XSS
-
-✅ **Manejo de Permisos**
 - Solicitud explícita de permisos
-- Manejo de rechazos
 - Validación antes de acceder a recursos
 
-✅ **API Security**
-- API Key en headers
-- Bearer tokens
-- Timeout de requests
-- Manejo de errores 401/403
-
 ## 🧪 Testing
-
 ```bash
 # Ejecutar tests
-npm test
 
-# Type checking
-npm run type-check
-
-# Linting
-npm run lint
-```
-
-## 📦 Estructura de Datos
 
 ### ClienteEntregaDTO
 ```typescript
