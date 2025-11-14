@@ -144,8 +144,8 @@ class HereNavigationService {
       }
 
       const origin: Ubicacion = {
-        latitude: currentLocation.latitude,
-        longitude: currentLocation.longitude,
+        latitude: currentLocation.coordinates.latitude,
+        longitude: currentLocation.coordinates.longitude,
       };
 
       // Calcular ruta inicial
@@ -321,8 +321,8 @@ class HereNavigationService {
       if (!location) return;
 
       const currentLocation: Ubicacion = {
-        latitude: location.latitude,
-        longitude: location.longitude,
+        latitude: location.coordinates.latitude,
+        longitude: location.coordinates.longitude,
       };
 
       // Verificar si llegamos al destino
