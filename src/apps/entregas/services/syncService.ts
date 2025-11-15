@@ -1,6 +1,7 @@
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
 import NetInfo from '@react-native-community/netinfo';
+import { Paths, Directory } from 'expo-file-system';
 import { entregasStorageService } from './storageService';
 import { entregasApiService } from './entregasApiService';
 import { EstadoSincronizacion, EntregaSync, ImagenDTO } from '../models';
@@ -17,6 +18,7 @@ export interface SyncResult {
 
 class SyncService {
   private isSyncing = false;
+  private readonly EVIDENCIAS_DIR = new Directory(Paths.document, 'FultraApps', 'Evidencias');
 
   async checkInternetConnection(): Promise<boolean> {
     try {
@@ -121,6 +123,13 @@ class SyncService {
     }
   }
 
+  private reconstruirUriImagen(nombreArchivo: string): string {
+    // Reconstruir la URI completa desde el directorio de evidencias
+    const rutaCompleta = `${this.EVIDENCIAS_DIR.uri}/${nombreArchivo}`;
+    console.log(`[SyncService] 🔗 URI reconstruida: ${rutaCompleta}`);
+    return rutaCompleta;
+  }
+
   private async sincronizarImagenes(imagenes: ImagenDTO[]): Promise<number> {
     let imagenesEnviadas = 0;
     const totalImagenes = imagenes.length;
@@ -137,9 +146,12 @@ class SyncService {
       try {
         console.log(`[SyncService] 📤 Subiendo imagen (${i + 1}/${totalImagenes}): ${imagen.nombre}`);
 
+        // Reconstruir la URI completa del archivo guardado
+        const uriCompleta = this.reconstruirUriImagen(imagen.nombre);
+
         const exito = await entregasApiService.subirImagenEvidencia(
           {
-            uri: imagen.nombre,
+            uri: uriCompleta,
             type: 'image/jpeg',
             name: imagen.nombre,
           },
