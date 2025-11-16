@@ -466,7 +466,7 @@ export async function demoAdvancedGeofencing() {
       limit: 5,
     });
 
-    console.log(`\n📜 Eventos Recientes (${events.length}):');
+    console.log(`\n📜 Eventos Recientes (${events.length}):`);
     events.forEach((event, index) => {
       console.log(
         `   ${index + 1}. ${event.timestamp.toLocaleTimeString()} - ${event.eventType} ${event.geofenceName}`
@@ -537,17 +537,17 @@ export async function demoCompleteDeliveryFlow() {
 
     console.log('\n\n✅ === FLUJO COMPLETO FINALIZADO ===');
     console.log('\n📊 Resumen:');
-    console.log(`   • Clima analizado en ${weather.weatherByWaypoint.length} puntos`);
+    console.log(`   - Clima analizado en ${weather.weatherByWaypoint.length} puntos`);
     console.log(
-      `   • ${matrix.optimalAssignments.length} vehículos asignados óptimamente`
+      `   - ${matrix.optimalAssignments.length} vehículos asignados óptimamente`
     );
     console.log(
-      `   • ${tours.summary.jobsAssigned} entregas planificadas en ${tours.summary.vehiclesUsed} vehículos`
+      `   - ${tours.summary.jobsAssigned} entregas planificadas en ${tours.summary.vehiclesUsed} vehículos`
     );
     console.log(
-      `   • Ruta de camión calculada: ${(truckRoute.distance / 1000).toFixed(1)} km con ${truckRoute.restrictions.length} restricciones`
+      `   - Ruta de camión calculada: ${(truckRoute.distance / 1000).toFixed(1)} km con ${truckRoute.restrictions.length} restricciones`
     );
-    console.log(`   • ${geofencing.geofences.length} geocercas activas monitoreando`);
+    console.log(`   - ${geofencing.geofences.length} geocercas activas monitoreando`);
 
     return {
       weather,
