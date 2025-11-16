@@ -56,6 +56,7 @@ export const DeliveryMapScreen: React.FC = () => {
   // Estado para la ruta optimizada
   const [rutaOptima, setRutaOptima] = useState<RutaOptima | null>(null);
   const [cargandoRuta, setCargandoRuta] = useState(false);
+  
   const [mostrarRuta, setMostrarRuta] = useState(true);
   
   // Estado para pantalla de carga inicial
@@ -66,10 +67,19 @@ export const DeliveryMapScreen: React.FC = () => {
   const [simulandoAcercamiento, setSimulandoAcercamiento] = useState(false);
   const simulationIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Estado para modo navegación en tercera persona
+  const [modoNavegacion, setModoNavegacion] = useState(false);
+  const [cameraHeading, setCameraHeading] = useState(0);
+
+  // Estado para recalculación automática de ruta
+  const [ultimaRecalculacion, setUltimaRecalculacion] = useState<Date | null>(null);
+  const [distanciaRecorrida, setDistanciaRecorrida] = useState(0);
+
   // Referencias
   const mapRef = useRef<MapView>(null);
   const trackingSubscription = useRef<any>(null);
   const authorizationSubscription = useRef<any>(null);
+  const ultimaUbicacionRef = useRef<Coordinates | null>(null);
 
   /**
    * Configurar tracking y permisos al montar componente
@@ -142,22 +152,8 @@ export const DeliveryMapScreen: React.FC = () => {
         (location) => {
           if (location) {
             setCurrentLocation(location);
-            
-            // Recalcular ruta si la ubicación cambió significativamente (más de 50m)
-            if (rutaOptima && rutaOptima.coordinates.length > 0) {
-              const primeraCoord = rutaOptima.coordinates[0];
-              const distancia = calcularDistanciaHaversine(
-                location.coordinates.latitude,
-                location.coordinates.longitude,
-                primeraCoord.latitude,
-                primeraCoord.longitude
-              );
-              
-              if (distancia > 50) {
-                console.log('[DELIVERY MAP] 📍 Ubicación cambió significativamente, recalculando ruta...');
-                calcularRutaOptima(location.coordinates, targetCoordinates);
-              }
-            }
+            // La recalculación automática se maneja ahora en el useEffect dedicado
+            // basado en múltiples criterios (distancia recorrida, desvío, tiempo)
           }
         }
       );
@@ -201,47 +197,56 @@ export const DeliveryMapScreen: React.FC = () => {
   /**
    * Calcular ruta optimizada usando HERE Maps
    */
-  const calcularRutaOptima = useCallback(async (origen: Coordinates, destino: Coordinates) => {
+  const calcularRutaOptima = useCallback(async (origen: Coordinates, destino: Coordinates, esRecalculacion: boolean = false) => {
     try {
       setCargandoRuta(true);
-      console.log('[DELIVERY MAP] 🗺️ Calculando ruta optimizada...', {
+      console.log(`[DELIVERY MAP] 🗺️ ${esRecalculacion ? 'Recalculando' : 'Calculando'} ruta optimizada...`, {
         origen: `${origen.latitude.toFixed(6)}, ${origen.longitude.toFixed(6)}`,
         destino: `${destino.latitude.toFixed(6)}, ${destino.longitude.toFixed(6)}`
       });
 
       const ruta = await routingService.obtenerRutaOptima(origen, destino);
-      
+
       if (ruta && ruta.coordinates.length > 0) {
         setRutaOptima(ruta);
-        console.log('[DELIVERY MAP] ✅ Ruta calculada:', {
+
+        // Actualizar última recalculación
+        if (esRecalculacion) {
+          setUltimaRecalculacion(new Date());
+          setDistanciaRecorrida(0); // Resetear distancia recorrida
+        }
+
+        console.log(`[DELIVERY MAP] ✅ Ruta ${esRecalculacion ? 'recalculada' : 'calculada'}:`, {
           distancia: `${(ruta.distance / 1000).toFixed(2)} km`,
           duracion: `${ruta.duration.toFixed(0)} min`,
           puntos: ruta.coordinates.length
         });
 
-        // Ajustar el zoom del mapa para mostrar toda la ruta
-        setTimeout(() => {
-          if (mapRef.current && ruta.coordinates.length > 0) {
-            const lats = ruta.coordinates.map(c => c.latitude);
-            const lngs = ruta.coordinates.map(c => c.longitude);
-            
-            const minLat = Math.min(...lats);
-            const maxLat = Math.max(...lats);
-            const minLng = Math.min(...lngs);
-            const maxLng = Math.max(...lngs);
-            
-            const padding = 0.01; // Padding adicional
-            
-            mapRef.current.animateToRegion({
-              latitude: (minLat + maxLat) / 2,
-              longitude: (minLng + maxLng) / 2,
-              latitudeDelta: (maxLat - minLat) + padding,
-              longitudeDelta: (maxLng - minLng) + padding,
-            }, 1000);
-            
-            console.log('[DELIVERY MAP] 🗺️ Mapa ajustado para mostrar ruta completa');
-          }
-        }, 500);
+        // Solo ajustar zoom si NO estamos en modo navegación o es la primera vez
+        if (!modoNavegacion || !esRecalculacion) {
+          setTimeout(() => {
+            if (mapRef.current && ruta.coordinates.length > 0) {
+              const lats = ruta.coordinates.map(c => c.latitude);
+              const lngs = ruta.coordinates.map(c => c.longitude);
+
+              const minLat = Math.min(...lats);
+              const maxLat = Math.max(...lats);
+              const minLng = Math.min(...lngs);
+              const maxLng = Math.max(...lngs);
+
+              const padding = 0.01; // Padding adicional
+
+              mapRef.current.animateToRegion({
+                latitude: (minLat + maxLat) / 2,
+                longitude: (minLng + maxLng) / 2,
+                latitudeDelta: (maxLat - minLat) + padding,
+                longitudeDelta: (maxLng - minLng) + padding,
+              }, 1000);
+
+              console.log('[DELIVERY MAP] 🗺️ Mapa ajustado para mostrar ruta completa');
+            }
+          }, 500);
+        }
       }
     } catch (error) {
       console.error('[DELIVERY MAP] ❌ Error calculando ruta:', error);
@@ -249,7 +254,7 @@ export const DeliveryMapScreen: React.FC = () => {
     } finally {
       setCargandoRuta(false);
     }
-  }, []);
+  }, [modoNavegacion]);
 
   /**
    * Calcular distancia entre dos puntos usando Haversine
@@ -268,6 +273,114 @@ export const DeliveryMapScreen: React.FC = () => {
 
     return R * c;
   }, []);
+
+  /**
+   * Verificar si el conductor está fuera de ruta
+   */
+  const verificarDesvioDeRuta = useCallback((ubicacionActual: Coordinates, rutaActual: RutaOptima | null): boolean => {
+    if (!rutaActual || rutaActual.coordinates.length === 0) {
+      return false;
+    }
+
+    // Encontrar el punto más cercano en la ruta
+    let distanciaMinima = Infinity;
+
+    for (const punto of rutaActual.coordinates) {
+      const distancia = calcularDistanciaHaversine(
+        ubicacionActual.latitude,
+        ubicacionActual.longitude,
+        punto.latitude,
+        punto.longitude
+      );
+
+      if (distancia < distanciaMinima) {
+        distanciaMinima = distancia;
+      }
+    }
+
+    // Si está a más de 100 metros de la ruta, está desviado
+    const umbralDesvio = 100; // metros
+    return distanciaMinima > umbralDesvio;
+  }, [calcularDistanciaHaversine]);
+
+  /**
+   * Verificar si necesita recalcular la ruta
+   */
+  const necesitaRecalcularRuta = useCallback((ubicacionActual: Coordinates): boolean => {
+    // Criterio 1: Verificar si ha pasado suficiente tiempo desde la última recalculación
+    const tiempoMinimoEntreRecalculos = 30000; // 30 segundos
+    if (ultimaRecalculacion) {
+      const tiempoTranscurrido = Date.now() - ultimaRecalculacion.getTime();
+      if (tiempoTranscurrido < tiempoMinimoEntreRecalculos) {
+        return false; // Muy pronto para recalcular
+      }
+    }
+
+    // Criterio 2: Verificar distancia recorrida desde última ubicación
+    if (ultimaUbicacionRef.current) {
+      const distanciaDesdeUltimaUbicacion = calcularDistanciaHaversine(
+        ultimaUbicacionRef.current.latitude,
+        ultimaUbicacionRef.current.longitude,
+        ubicacionActual.latitude,
+        ubicacionActual.longitude
+      );
+
+      // Acumular distancia recorrida
+      setDistanciaRecorrida(prev => prev + distanciaDesdeUltimaUbicacion);
+
+      // Recalcular cada 200 metros recorridos
+      if (distanciaRecorrida + distanciaDesdeUltimaUbicacion >= 200) {
+        console.log('[DELIVERY MAP] 📏 Recalculando ruta: 200m recorridos');
+        return true;
+      }
+    }
+
+    // Criterio 3: Verificar si está fuera de ruta
+    if (verificarDesvioDeRuta(ubicacionActual, rutaOptima)) {
+      console.log('[DELIVERY MAP] ⚠️ Recalculando ruta: Fuera de ruta detectado');
+      return true;
+    }
+
+    return false;
+  }, [ultimaRecalculacion, distanciaRecorrida, rutaOptima, calcularDistanciaHaversine, verificarDesvioDeRuta]);
+
+  /**
+   * Obtener segmento de ruta desde la ubicación actual
+   * Esto optimiza la visualización mostrando solo la parte relevante de la ruta
+   */
+  const obtenerSegmentoRutaDesdeUbicacion = useCallback((
+    ubicacionActual: Coordinates,
+    rutaCompleta: RutaOptima
+  ): Coordinates[] => {
+    if (!rutaCompleta || rutaCompleta.coordinates.length === 0) {
+      return [];
+    }
+
+    // Encontrar el punto más cercano en la ruta a la ubicación actual
+    let indicePuntoCercano = 0;
+    let distanciaMinima = Infinity;
+
+    rutaCompleta.coordinates.forEach((punto, index) => {
+      const distancia = calcularDistanciaHaversine(
+        ubicacionActual.latitude,
+        ubicacionActual.longitude,
+        punto.latitude,
+        punto.longitude
+      );
+
+      if (distancia < distanciaMinima) {
+        distanciaMinima = distancia;
+        indicePuntoCercano = index;
+      }
+    });
+
+    // Retornar la ruta desde el punto cercano hasta el final
+    // Incluir la ubicación actual como primer punto
+    return [
+      ubicacionActual,
+      ...rutaCompleta.coordinates.slice(indicePuntoCercano)
+    ];
+  }, [calcularDistanciaHaversine]);
 
   /**
    * Centrar mapa en ubicación específica
@@ -321,7 +434,71 @@ export const DeliveryMapScreen: React.FC = () => {
   };
 
   /**
+   * Alternar modo navegación (tercera persona)
+   */
+  const toggleModoNavegacion = () => {
+    const nuevoModo = !modoNavegacion;
+    setModoNavegacion(nuevoModo);
+
+    if (nuevoModo) {
+      console.log('[DELIVERY MAP] 🎮 Activando modo navegación tercera persona');
+      // Activar modo navegación
+      actualizarCamaraNavegacion();
+    } else {
+      console.log('[DELIVERY MAP] 🗺️ Desactivando modo navegación');
+      // Volver a vista normal
+      if (currentLocation) {
+        centerMapOnLocation(currentLocation.coordinates);
+      }
+    }
+  };
+
+  /**
+   * Actualizar cámara en modo navegación (tercera persona)
+   */
+  const actualizarCamaraNavegacion = useCallback(() => {
+    if (!currentLocation || !mapRef.current) {
+      return;
+    }
+
+    // Calcular heading (dirección) basado en el heading del GPS o dirección hacia destino
+    let heading = cameraHeading;
+
+    if (currentLocation.heading !== undefined && currentLocation.heading !== null) {
+      heading = currentLocation.heading;
+      setCameraHeading(heading);
+    } else {
+      // Calcular heading hacia el destino si no hay heading del GPS
+      const destLat = puntoEntrega.latitud;
+      const destLng = puntoEntrega.longitud;
+      const currLat = currentLocation.coordinates.latitude;
+      const currLng = currentLocation.coordinates.longitude;
+
+      const dLng = destLng - currLng;
+      const dLat = destLat - currLat;
+
+      heading = Math.atan2(dLng, dLat) * (180 / Math.PI);
+      if (heading < 0) heading += 360;
+
+      setCameraHeading(heading);
+    }
+
+    // Aplicar vista en tercera persona
+    mapRef.current.animateCamera({
+      center: {
+        latitude: currentLocation.coordinates.latitude,
+        longitude: currentLocation.coordinates.longitude,
+      },
+      pitch: 60, // Vista en tercera persona (60 grados de inclinación)
+      heading: heading, // Dirección de la cámara
+      zoom: 17, // Zoom cercano para navegación
+      altitude: 500,
+    }, { duration: 1000 });
+  }, [currentLocation, cameraHeading, puntoEntrega.latitud, puntoEntrega.longitud]);
+
+  /**
    * Simular acercamiento al destino para testing/desarrollo
+   * Ahora sigue la ruta optimizada de HERE Maps
    */
   const simularAcercamiento = useCallback(() => {
     if (simulandoAcercamiento) {
@@ -340,36 +517,86 @@ export const DeliveryMapScreen: React.FC = () => {
       return;
     }
 
+    if (!rutaOptima || rutaOptima.coordinates.length === 0) {
+      Alert.alert('Error', 'No hay ruta calculada. Espera a que se calcule la ruta primero.');
+      return;
+    }
+
     setSimulandoAcercamiento(true);
-    console.log('[DELIVERY MAP] 🎮 Iniciando simulación de acercamiento...');
+    console.log('[DELIVERY MAP] 🎮 Iniciando simulación siguiendo ruta optimizada...');
 
     const destino: Coordinates = {
       latitude: puntoEntrega.latitud,
       longitude: puntoEntrega.longitud
     };
 
-    let currentLat = currentLocation.coordinates.latitude;
-    let currentLng = currentLocation.coordinates.longitude;
+    // Obtener segmento de ruta desde ubicación actual
+    const rutaParaSimular = obtenerSegmentoRutaDesdeUbicacion(currentLocation.coordinates, rutaOptima);
 
-    // Calcular dirección y pasos para acercarse
-    const latDiff = destino.latitude - currentLat;
-    const lngDiff = destino.longitude - currentLng;
-    const totalDistance = calcularDistanciaHaversine(currentLat, currentLng, destino.latitude, destino.longitude);
-    
-    console.log(`[DELIVERY MAP] 📍 Distancia inicial: ${totalDistance.toFixed(0)}m`);
+    if (rutaParaSimular.length < 2) {
+      Alert.alert('Error', 'Ruta demasiado corta para simular');
+      setSimulandoAcercamiento(false);
+      return;
+    }
 
-    // Número de pasos (cada paso será de aproximadamente 10 metros)
-    const steps = Math.ceil(totalDistance / 250);
-    const latStep = latDiff / steps;
-    const lngStep = lngDiff / steps;
+    console.log(`[DELIVERY MAP] 📍 Simulando con ${rutaParaSimular.length} puntos de ruta`);
+    console.log(`[DELIVERY MAP] 📏 Distancia total: ${(rutaOptima.distance / 1000).toFixed(2)} km`);
 
-    let currentStep = 0;
+    // Índices para seguir la ruta
+    let currentRouteIndex = 0;
+    let interpolacionProgreso = 0;
+
+    // Velocidad de interpolación (qué tan rápido avanza entre puntos)
+    // Valor más alto = más rápido. 0.05 = avanza 5% entre puntos cada intervalo
+    const velocidadInterpolacion = 0.05;
 
     // Intervalo de simulación (cada 500ms da un paso)
     simulationIntervalRef.current = setInterval(() => {
-      currentStep++;
-      currentLat += latStep;
-      currentLng += lngStep;
+      // Verificar si ya llegamos al final de la ruta
+      if (currentRouteIndex >= rutaParaSimular.length - 1) {
+        // Llegamos al destino
+        if (simulationIntervalRef.current) {
+          clearInterval(simulationIntervalRef.current);
+          simulationIntervalRef.current = null;
+        }
+        setSimulandoAcercamiento(false);
+        console.log('[DELIVERY MAP] ✅ Simulación completada - Llegaste al destino siguiendo la ruta!');
+
+        Alert.alert(
+          '✅ Llegaste al Destino',
+          'Ahora puedes realizar la entrega',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      const puntoOrigen = rutaParaSimular[currentRouteIndex];
+      const puntoDestino = rutaParaSimular[currentRouteIndex + 1];
+
+      // Incrementar progreso de interpolación
+      interpolacionProgreso += velocidadInterpolacion;
+
+      // Si completamos la interpolación entre dos puntos, avanzar al siguiente
+      if (interpolacionProgreso >= 1) {
+        currentRouteIndex++;
+        interpolacionProgreso = 0;
+
+        // Verificar nuevamente si llegamos al final
+        if (currentRouteIndex >= rutaParaSimular.length - 1) {
+          return;
+        }
+      }
+
+      // Calcular posición interpolada entre puntoOrigen y puntoDestino
+      const currentLat = puntoOrigen.latitude +
+        (puntoDestino.latitude - puntoOrigen.latitude) * interpolacionProgreso;
+      const currentLng = puntoOrigen.longitude +
+        (puntoDestino.longitude - puntoOrigen.longitude) * interpolacionProgreso;
+
+      // Calcular heading (dirección del movimiento)
+      const dLat = puntoDestino.latitude - puntoOrigen.latitude;
+      const dLng = puntoDestino.longitude - puntoOrigen.longitude;
+      const heading = Math.atan2(dLng, dLat) * (180 / Math.PI);
 
       const newLocation: LocationUpdate = {
         coordinates: {
@@ -378,14 +605,14 @@ export const DeliveryMapScreen: React.FC = () => {
         },
         accuracy: 5,
         timestamp: Date.now(),
-        speed: 5, // 5 m/s (18 km/h - velocidad de caminata rápida)
-        heading: Math.atan2(lngDiff, latDiff) * (180 / Math.PI)
+        speed: 30, // 30 km/h - velocidad promedio en ciudad
+        heading: heading >= 0 ? heading : heading + 360
       };
 
       // Actualizar ubicación simulada
       setCurrentLocation(newLocation);
 
-      // Calcular distancia restante
+      // Calcular distancia al destino final
       const remainingDistance = calcularDistanciaHaversine(
         currentLat,
         currentLng,
@@ -393,15 +620,15 @@ export const DeliveryMapScreen: React.FC = () => {
         destino.longitude
       );
 
-      console.log(`[DELIVERY MAP] 🚗 Paso ${currentStep}/${steps}, Distancia: ${remainingDistance.toFixed(0)}m`);
+      console.log(`[DELIVERY MAP] 🚗 Punto ${currentRouteIndex}/${rutaParaSimular.length - 1}, Progreso: ${(interpolacionProgreso * 100).toFixed(0)}%, Distancia restante: ${remainingDistance.toFixed(0)}m`);
 
       // Actualizar estado de autorización manualmente
       const isWithinGeofence = remainingDistance <= 50;
-      
+
       setAuthorizationStatus({
         isAuthorized: isWithinGeofence,
-        reason: isWithinGeofence 
-          ? '✅ Dentro del área de entrega (simulado)' 
+        reason: isWithinGeofence
+          ? '✅ Dentro del área de entrega (simulado)'
           : `📍 A ${Math.round(remainingDistance)}m del destino (simulado)`,
         distance: remainingDistance,
         requiredDistance: 50,
@@ -410,24 +637,39 @@ export const DeliveryMapScreen: React.FC = () => {
 
       // Centrar mapa en la nueva ubicación
       if (mapRef.current) {
-        mapRef.current.animateCamera({
-          center: {
-            latitude: currentLat,
-            longitude: currentLng
-          },
-          zoom: 16
-        }, { duration: 400 });
+        if (modoNavegacion) {
+          // Si está en modo navegación, usar vista tercera persona
+          mapRef.current.animateCamera({
+            center: {
+              latitude: currentLat,
+              longitude: currentLng
+            },
+            pitch: 60, // Vista tercera persona
+            heading: newLocation.heading || 0,
+            zoom: 17,
+            altitude: 500,
+          }, { duration: 400 });
+        } else {
+          // Vista normal desde arriba
+          mapRef.current.animateCamera({
+            center: {
+              latitude: currentLat,
+              longitude: currentLng
+            },
+            zoom: 16
+          }, { duration: 400 });
+        }
       }
 
       // Detener simulación cuando llegue al destino o esté dentro del geofence
-      if (remainingDistance <= 50 || currentStep >= steps) {
+      if (remainingDistance <= 50) {
         if (simulationIntervalRef.current) {
           clearInterval(simulationIntervalRef.current);
           simulationIntervalRef.current = null;
         }
         setSimulandoAcercamiento(false);
         console.log('[DELIVERY MAP] ✅ Simulación completada - Llegaste al destino!');
-        
+
         Alert.alert(
           '✅ Llegaste al Destino',
           'Ahora puedes realizar la entrega',
@@ -436,7 +678,7 @@ export const DeliveryMapScreen: React.FC = () => {
       }
     }, 500);
 
-  }, [currentLocation, simulandoAcercamiento, puntoEntrega, geofenceId, calcularDistanciaHaversine]);
+  }, [currentLocation, simulandoAcercamiento, puntoEntrega, geofenceId, calcularDistanciaHaversine, rutaOptima, obtenerSegmentoRutaDesdeUbicacion, modoNavegacion]);
 
   /**
    * Navegar al formulario de entrega si está autorizado
@@ -533,6 +775,35 @@ export const DeliveryMapScreen: React.FC = () => {
     });
   }, [rutaOptima, mostrarRuta, cargandoRuta]);
 
+  // Actualizar cámara automáticamente cuando está en modo navegación
+  useEffect(() => {
+    if (modoNavegacion && currentLocation) {
+      actualizarCamaraNavegacion();
+    }
+  }, [modoNavegacion, currentLocation, actualizarCamaraNavegacion]);
+
+  // Recalcular ruta automáticamente según progreso del conductor
+  useEffect(() => {
+    if (!currentLocation || !rutaOptima || simulandoAcercamiento) {
+      return;
+    }
+
+    const targetCoordinates: Coordinates = {
+      latitude: puntoEntrega.latitud,
+      longitude: puntoEntrega.longitud
+    };
+
+    // Verificar si necesita recalcular
+    if (necesitaRecalcularRuta(currentLocation.coordinates)) {
+      console.log('[DELIVERY MAP] 🔄 Recalculando ruta automáticamente...');
+      calcularRutaOptima(currentLocation.coordinates, targetCoordinates, true);
+    }
+
+    // Actualizar última ubicación
+    ultimaUbicacionRef.current = currentLocation.coordinates;
+
+  }, [currentLocation, rutaOptima, simulandoAcercamiento, necesitaRecalcularRuta, calcularRutaOptima, puntoEntrega.latitud, puntoEntrega.longitud]);
+
   // Pantalla de carga
   if (inicializando) {
     return (
@@ -604,7 +875,23 @@ export const DeliveryMapScreen: React.FC = () => {
           }}
         >
           {/* Línea de ruta optimizada - RENDERIZAR PRIMERO para que esté debajo */}
-          {mostrarRuta && rutaOptima && rutaOptima.coordinates.length > 0 && (
+          {mostrarRuta && rutaOptima && rutaOptima.coordinates.length > 0 && currentLocation && (
+            <Polyline
+              coordinates={
+                // Usar segmento optimizado de ruta desde ubicación actual
+                obtenerSegmentoRutaDesdeUbicacion(currentLocation.coordinates, rutaOptima)
+              }
+              strokeColor="#2563EB"
+              strokeWidth={5}
+              lineCap="round"
+              lineJoin="round"
+              geodesic={true}
+              zIndex={1}
+            />
+          )}
+
+          {/* Línea de ruta completa (más tenue) si queremos mostrarla completa */}
+          {mostrarRuta && rutaOptima && rutaOptima.coordinates.length > 0 && !currentLocation && (
             <Polyline
               coordinates={rutaOptima.coordinates}
               strokeColor="#2563EB"
@@ -665,60 +952,75 @@ export const DeliveryMapScreen: React.FC = () => {
 
         {/* Controles del mapa */}
         <View style={styles.mapControls}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.mapButton}
             onPress={centerOnMyLocation}
           >
             <Ionicons name="locate" size={20} color={colors.primary[600]} />
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+
+          <TouchableOpacity
             style={styles.mapButton}
             onPress={centerOnDestination}
           >
             <Ionicons name="flag" size={20} color={colors.error[600]} />
           </TouchableOpacity>
 
+          {/* Botón para alternar modo navegación (tercera persona) */}
+          <TouchableOpacity
+            style={[
+              styles.mapButton,
+              modoNavegacion && styles.navigationButtonActive
+            ]}
+            onPress={toggleModoNavegacion}
+          >
+            <Ionicons
+              name={modoNavegacion ? "navigate" : "navigate-outline"}
+              size={20}
+              color={modoNavegacion ? 'white' : colors.primary[600]}
+            />
+          </TouchableOpacity>
+
           {/* Botón para mostrar/ocultar ruta */}
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.mapButton, !mostrarRuta && styles.mapButtonInactive]}
             onPress={() => setMostrarRuta(!mostrarRuta)}
           >
-            <Ionicons 
-              name={mostrarRuta ? "eye" : "eye-off"} 
-              size={20} 
-              color={mostrarRuta ? colors.primary[600] : colors.neutral[400]} 
+            <Ionicons
+              name={mostrarRuta ? "eye" : "eye-off"}
+              size={20}
+              color={mostrarRuta ? colors.primary[600] : colors.neutral[400]}
             />
           </TouchableOpacity>
 
           {/* Botón para recalcular ruta */}
           {currentLocation && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.mapButton, cargandoRuta && styles.mapButtonInactive]}
               onPress={() => calcularRutaOptima(currentLocation.coordinates, targetCoordinates)}
               disabled={cargandoRuta}
             >
-              <Ionicons 
-                name="refresh" 
-                size={20} 
-                color={cargandoRuta ? colors.neutral[400] : colors.primary[600]} 
+              <Ionicons
+                name="refresh"
+                size={20}
+                color={cargandoRuta ? colors.neutral[400] : colors.primary[600]}
               />
             </TouchableOpacity>
           )}
 
           {/* Botón para simular acercamiento (DESARROLLO/TESTING) */}
           {currentLocation && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[
                 styles.mapButton,
                 simulandoAcercamiento && styles.simulationButtonActive
               ]}
               onPress={simularAcercamiento}
             >
-              <Ionicons 
-                name={simulandoAcercamiento ? "stop-circle" : "play-circle"} 
-                size={20} 
-                color={simulandoAcercamiento ? colors.error[600] : colors.warning[600]} 
+              <Ionicons
+                name={simulandoAcercamiento ? "stop-circle" : "play-circle"}
+                size={20}
+                color={simulandoAcercamiento ? colors.error[600] : colors.warning[600]}
               />
             </TouchableOpacity>
           )}
@@ -727,12 +1029,22 @@ export const DeliveryMapScreen: React.FC = () => {
 
       {/* Panel de estado */}
       <View style={styles.statusPanel}>
+        {/* Banner de modo navegación */}
+        {modoNavegacion && (
+          <View style={styles.navigationBanner}>
+            <Ionicons name="navigate" size={16} color="white" />
+            <Text style={styles.navigationBannerText}>
+              MODO NAVEGACIÓN 3D
+            </Text>
+          </View>
+        )}
+
         {/* Banner de simulación */}
         {simulandoAcercamiento && (
           <View style={styles.simulationBanner}>
             <Ionicons name="play-circle" size={16} color="white" />
             <Text style={styles.simulationBannerText}>
-              🎮 MODO SIMULACIÓN ACTIVO
+              MODO SIMULACIÓN ACTIVO
             </Text>
           </View>
         )}
@@ -924,10 +1236,31 @@ const styles = StyleSheet.create({
   mapButtonInactive: {
     opacity: 0.5,
   },
+  navigationButtonActive: {
+    backgroundColor: colors.primary[600],
+    borderWidth: 2,
+    borderColor: colors.primary[700],
+  },
   simulationButtonActive: {
     backgroundColor: colors.error[50],
     borderWidth: 2,
     borderColor: colors.error[600],
+  },
+  navigationBanner: {
+    backgroundColor: colors.primary[600],
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing[2],
+    paddingHorizontal: spacing[3],
+    marginBottom: spacing[2],
+    borderRadius: 8,
+    gap: spacing[2],
+  },
+  navigationBannerText: {
+    ...typography.body2,
+    color: 'white',
+    fontWeight: 'bold',
   },
   simulationBanner: {
     backgroundColor: colors.warning[600],
