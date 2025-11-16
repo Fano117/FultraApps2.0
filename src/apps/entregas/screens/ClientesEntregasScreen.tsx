@@ -5,6 +5,7 @@ import {
   FlatList,
   RefreshControl,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -14,6 +15,7 @@ import { useAppSelector, useAppDispatch } from '@/shared/hooks';
 import { fetchEmbarques, loadLocalData } from '../store/entregasSlice';
 import { ClienteEntregaDTO } from '../models';
 import { EntregasStackParamList } from '@/navigation/types';
+import { syncService } from '../services/syncService';
 
 type NavigationProp = NativeStackNavigationProp<EntregasStackParamList, 'ClientesEntregas'>;
 
@@ -26,12 +28,41 @@ const ClientesEntregasScreen: React.FC = () => {
   const [filtroActivo, setFiltroActivo] = useState<FiltroEstado>('Pendientes');
 
   useEffect(() => {
-    loadData();
+    loadData(false); // No mostrar alerta en carga inicial
+
+    // Activar listener de conectividad para sincronización automática
+    syncService.startConnectivityListener(() => {
+      // Callback cuando se completa una sincronización automática
+      dispatch(loadLocalData());
+    });
+
+    return () => {
+      // Limpiar listener al salir del módulo
+      syncService.stopConnectivityListener();
+    };
   }, []);
 
-  const loadData = async () => {
+  const loadData = async (showAlert: boolean = true) => {
     await dispatch(loadLocalData());
-    await dispatch(fetchEmbarques());
+
+    try {
+      const result = await dispatch(fetchEmbarques()).unwrap();
+
+      if (showAlert) {
+        const totalOrdenes = result.reduce((sum, c) => sum + c.entregas.length, 0);
+        Alert.alert(
+          'Lista Actualizada',
+          `Se cargaron ${result.length} cliente(s) con ${totalOrdenes} orden(es) de venta.`
+        );
+      }
+    } catch (error: any) {
+      if (showAlert) {
+        Alert.alert(
+          'Error al Actualizar',
+          error || 'No se pudo conectar con el servidor. Se muestran los datos locales.'
+        );
+      }
+    }
   };
 
   const filtros: { label: FiltroEstado; count: number; color: string }[] = [

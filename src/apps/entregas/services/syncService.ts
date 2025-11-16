@@ -1,10 +1,12 @@
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
-import NetInfo from '@react-native-community/netinfo';
+import NetInfo, { NetInfoSubscription } from '@react-native-community/netinfo';
 import { Paths, Directory } from 'expo-file-system';
 import { entregasStorageService } from './storageService';
 import { entregasApiService } from './entregasApiService';
 import { EstadoSincronizacion, EntregaSync, ImagenDTO } from '../models';
+import { apiService } from '@/shared/services';
+import moment from 'moment';
 
 const BACKGROUND_SYNC_TASK = 'background-entregas-sync';
 const SYNC_INTERVAL_MINUTES = 15;
@@ -19,14 +21,85 @@ export interface SyncResult {
 class SyncService {
   private isSyncing = false;
   private readonly EVIDENCIAS_DIR = new Directory(Paths.document, 'FultraApps', 'Evidencias');
+  private connectivitySubscription: NetInfoSubscription | null = null;
+  private onSyncCompleteCallback: (() => void) | null = null;
 
   async checkInternetConnection(): Promise<boolean> {
     try {
       const netInfo = await NetInfo.fetch();
-      return netInfo.isConnected === true && netInfo.isInternetReachable === true;
+      if (netInfo.isConnected !== true || netInfo.isInternetReachable !== true) {
+        return false;
+      }
+
+      // Verificación real: intentar conectar al servidor
+      const serverReachable = await this.pingServer();
+      return serverReachable;
     } catch (error) {
       console.error('Error checking internet connection:', error);
       return false;
+    }
+  }
+
+  private async pingServer(): Promise<boolean> {
+    try {
+      // Usar un timeout corto para verificar conectividad real
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      await apiService.get('/health', { signal: controller.signal, timeout: 5000 });
+      clearTimeout(timeoutId);
+      return true;
+    } catch (error: any) {
+      // Si el servidor responde con cualquier código HTTP, está alcanzable
+      if (error?.message && !error.message.includes('conectar')) {
+        // El servidor respondió (aunque sea con error), hay conectividad
+        return true;
+      }
+      console.log('[SyncService] Server ping failed:', error.message);
+      return false;
+    }
+  }
+
+  startConnectivityListener(onSyncComplete?: () => void): void {
+    if (this.connectivitySubscription) {
+      return;
+    }
+
+    this.onSyncCompleteCallback = onSyncComplete || null;
+
+    this.connectivitySubscription = NetInfo.addEventListener(async (state) => {
+      if (state.isConnected && state.isInternetReachable) {
+        console.log('[SyncService] Connectivity restored, checking for pending syncs...');
+
+        const pendientes = await entregasStorageService.getEntregasSync();
+        const hayPendientes = pendientes.some(
+          (e) =>
+            e.estado === EstadoSincronizacion.PENDIENTE_ENVIO ||
+            e.estado === EstadoSincronizacion.ERROR ||
+            e.estado === EstadoSincronizacion.IMAGENES_PENDIENTES
+        );
+
+        if (hayPendientes && !this.isSyncing) {
+          console.log('[SyncService] Found pending syncs, starting automatic sync...');
+          const result = await this.sincronizarEntregasPendientes();
+          console.log('[SyncService] Auto-sync result:', result);
+
+          if (this.onSyncCompleteCallback) {
+            this.onSyncCompleteCallback();
+          }
+        }
+      }
+    });
+
+    console.log('[SyncService] Connectivity listener started');
+  }
+
+  stopConnectivityListener(): void {
+    if (this.connectivitySubscription) {
+      this.connectivitySubscription();
+      this.connectivitySubscription = null;
+      this.onSyncCompleteCallback = null;
+      console.log('[SyncService] Connectivity listener stopped');
     }
   }
 
@@ -37,6 +110,16 @@ class SyncService {
       await entregasStorageService.updateEntregaSync(entrega.id, {
         estado: EstadoSincronizacion.ENVIANDO,
       });
+
+      // Formatear fechas con moment.js para mantener zona horaria local
+      const fechaCapturaISO = entrega.fechaCaptura
+        ? moment(entrega.fechaCaptura).format('YYYY-MM-DDTHH:mm:ssZ')
+        : moment().format('YYYY-MM-DDTHH:mm:ssZ');
+
+      const fechaEnvioServerISO = moment().format('YYYY-MM-DDTHH:mm:ssZ');
+
+      console.log('[SyncService] Fecha captura formateada:', fechaCapturaISO);
+      console.log('[SyncService] Fecha envío servidor formateada:', fechaEnvioServerISO);
 
       const embarqueData = {
         ordenVenta: entrega.ordenVenta,
@@ -50,8 +133,8 @@ class SyncService {
         nombreQuienEntrega: entrega.nombreQuienEntrega,
         latitud: entrega.latitud,
         longitud: entrega.longitud,
-        fechaCaptura: entrega.fechaCaptura,
-        fechaEnvioServer: new Date(),
+        fechaCaptura: fechaCapturaISO as unknown as Date, // String ISO con timezone local
+        fechaEnvioServer: fechaEnvioServerISO as unknown as Date, // String ISO con timezone local
         enviadoServer: true,
         articulos: entrega.articulos,
       };
@@ -95,6 +178,13 @@ class SyncService {
 
       const imagenesEnviadas = await this.sincronizarImagenes(todasImagenes);
 
+      // Persistir el estado de las imágenes enviadas para evitar reenvíos
+      await entregasStorageService.updateEntregaSync(entrega.id, {
+        imagenesEvidencia: entrega.imagenesEvidencia,
+        imagenesFacturas: entrega.imagenesFacturas,
+        imagenesIncidencia: entrega.imagenesIncidencia,
+      });
+
       if (imagenesEnviadas === todasImagenes.length) {
         console.log(`[SyncService] ✅ Todas las imágenes (${imagenesEnviadas}) enviadas exitosamente`);
         await this.finalizarSincronizacion(entrega.id);
@@ -104,7 +194,7 @@ class SyncService {
           `[SyncService] ⚠️ Solo se enviaron ${imagenesEnviadas} de ${todasImagenes.length} imágenes`
         );
         await entregasStorageService.updateEntregaSync(entrega.id, {
-          estado: EstadoSincronizacion.ERROR,
+          estado: EstadoSincronizacion.IMAGENES_PENDIENTES,
           intentosEnvio: entrega.intentosEnvio + 1,
           ultimoError: `Solo se enviaron ${imagenesEnviadas} de ${todasImagenes.length} imágenes`,
         });
@@ -288,6 +378,7 @@ class SyncService {
         estado: EstadoSincronizacion.PENDIENTE_ENVIO,
       });
 
+      // Remover de la lista de órdenes pendientes DESPUÉS de guardar en sync
       await entregasStorageService.removeEntrega(entrega.ordenVenta, entrega.folio);
 
       return {
@@ -302,10 +393,8 @@ class SyncService {
     console.log(`[SyncService] 📦 Entrega: ${entrega.folio} | Tipo: ${entrega.tipoEntrega}`);
 
     try {
-      // Remover de la lista de pendientes antes de enviar
-      await entregasStorageService.removeEntrega(entrega.ordenVenta, entrega.folio);
-
       // Guardar temporalmente en sincronización para mostrar progreso
+      // NO removemos de la lista de órdenes hasta confirmar envío exitoso
       await entregasStorageService.saveEntregaSync({
         ...entrega,
         estado: EstadoSincronizacion.ENVIANDO,
@@ -315,6 +404,8 @@ class SyncService {
       const exitoso = await this.sincronizarEntrega(entrega);
 
       if (exitoso) {
+        // SOLO remover de órdenes pendientes si la sincronización fue exitosa
+        await entregasStorageService.removeEntrega(entrega.ordenVenta, entrega.folio);
         console.log(`[SyncService] ✅ Entrega ${entrega.folio} enviada exitosamente (datos e imágenes)`);
         return {
           success: true,
@@ -323,6 +414,8 @@ class SyncService {
           mensaje: 'Entrega enviada exitosamente',
         };
       } else {
+        // Mantener en órdenes pendientes pero marcar como pendiente de sync
+        await entregasStorageService.removeEntrega(entrega.ordenVenta, entrega.folio);
         console.log(`[SyncService] ⚠️ Error al enviar entrega ${entrega.folio}, se reintentará`);
         return {
           success: false,
@@ -341,6 +434,9 @@ class SyncService {
         intentosEnvio: 1,
         ultimoError: error.message || 'Error desconocido',
       });
+
+      // Remover de órdenes pendientes ya que está en cola de sync
+      await entregasStorageService.removeEntrega(entrega.ordenVenta, entrega.folio);
 
       return {
         success: false,

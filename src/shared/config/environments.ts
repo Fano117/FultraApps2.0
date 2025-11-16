@@ -20,7 +20,7 @@ export const environments: Record<string, EnvironmentConfig> = {
     apiLogin: BASE_LOGIN,
   },
   ngrok: {
-    apiUrl: 'https://864a140a330f.ngrok-free.app/api',
+    apiUrl: 'https://d0fd8aa3c305.ngrok-free.app/api',
     apiKey: 'qXwXO937WpdJ4MCnUMx77a7B6CIuwqDDAe1kr6rPc9A=',
     apiLogin: BASE_LOGIN,
   },
