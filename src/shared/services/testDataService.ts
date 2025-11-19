@@ -35,46 +35,16 @@ class TestDataService {
 
       console.log(`✅ Generados: ${clientes.length} clientes en Monterrey, ${entregas.length} entregas`);
 
-      // 2. Enviar clientes al backend
-      console.log('📤 Enviando clientes...');
-      let clientesCreados = 0;
-      for (const cliente of clientes) {
-        try {
-          await this.createCliente(cliente);
-          clientesCreados++;
-        } catch (error: any) {
-          console.error(`Error creando cliente ${cliente.nombre}:`, error);
-          errores.push(`Cliente ${cliente.nombre}: ${error.message}`);
-        }
-      }
-
-      // 3. Enviar entregas al backend
-      console.log('📤 Enviando entregas...');
-      let entregasCreadas = 0;
-      for (const entrega of entregas) {
-        try {
-          await this.createEntrega(entrega);
-          entregasCreadas++;
-        } catch (error: any) {
-          console.error(`Error creando entrega ${entrega.folio}:`, error);
-          errores.push(`Entrega ${entrega.folio}: ${error.message}`);
-        }
-      }
-
-      // 4. Enviar rutas GPS si existen
-      let rutasGeneradas = 0;
-      if (rutas && rutas.length > 0) {
-        console.log('📍 Enviando rutas GPS...');
-        for (const ruta of rutas) {
-          try {
-            await this.createRutaGPS(ruta);
-            rutasGeneradas++;
-          } catch (error: any) {
-            console.error('Error creando ruta GPS:', error);
-            errores.push(`Ruta GPS: ${error.message}`);
-          }
-        }
-      }
+      // 2. Convertir datos generados al formato ClienteEntregaDTO
+      const clientesDTO = await this.convertToClienteEntregaDTO(clientes, entregas);
+      
+      // 3. Guardar datos localmente usando AsyncStorage
+      console.log('💾 Guardando datos en almacenamiento local...');
+      await AsyncStorage.setItem('@FultraApps:clientesEntrega', JSON.stringify(clientesDTO));
+      
+      const clientesCreados = clientes.length;
+      const entregasCreadas = entregas.length;
+      const rutasGeneradas = rutas?.length || 0;
 
       // 5. Guardar marca de datos cargados
       await AsyncStorage.setItem(this.STORAGE_KEY, JSON.stringify({
@@ -122,66 +92,34 @@ class TestDataService {
   private readonly STORAGE_KEY = '@FultraApps:test_data_loaded';
 
   /**
-   * Cargar datos de prueba completos al backend
+   * Cargar datos de prueba completos (SOLO LOCALMENTE - SIN BACKEND)
    */
   async loadTestData(config: TestDataConfig): Promise<TestDataResult> {
     const startTime = Date.now();
     const errores: string[] = [];
 
     try {
-      console.log('🚀 Iniciando carga de datos de prueba...');
+      console.log('🚀 Iniciando carga de datos de prueba MOCK (solo local)...');
       console.log('Configuración:', config);
 
-      // 1. Generar datos
-      console.log('📝 Generando datos...');
+      // 1. Generar datos mock localmente
+      console.log('📝 Generando datos mock...');
       const { clientes, entregas, rutas } = testDataGenerator.generateTestDataSet(config);
 
       console.log(`✅ Generados: ${clientes.length} clientes, ${entregas.length} entregas`);
 
-      // 2. Enviar clientes al backend
-      console.log('📤 Enviando clientes...');
-      let clientesCreados = 0;
+      // 2. Convertir datos generados al formato ClienteEntregaDTO
+      const clientesDTO = await this.convertToClienteEntregaDTO(clientes, entregas);
+      
+      // 3. Guardar datos localmente usando AsyncStorage
+      console.log('💾 Guardando datos en almacenamiento local...');
+      await AsyncStorage.setItem('@FultraApps:clientesEntrega', JSON.stringify(clientesDTO));
+      
+      const clientesCreados = clientes.length;
+      const entregasCreadas = entregas.length;
+      const rutasGeneradas = rutas?.length || 0;
 
-      for (const cliente of clientes) {
-        try {
-          await this.createCliente(cliente);
-          clientesCreados++;
-        } catch (error: any) {
-          console.error(`Error creando cliente ${cliente.nombre}:`, error);
-          errores.push(`Cliente ${cliente.nombre}: ${error.message}`);
-        }
-      }
-
-      // 3. Enviar entregas al backend
-      console.log('📤 Enviando entregas...');
-      let entregasCreadas = 0;
-
-      for (const entrega of entregas) {
-        try {
-          await this.createEntrega(entrega);
-          entregasCreadas++;
-        } catch (error: any) {
-          console.error(`Error creando entrega ${entrega.folio}:`, error);
-          errores.push(`Entrega ${entrega.folio}: ${error.message}`);
-        }
-      }
-
-      // 4. Enviar rutas GPS si existen
-      let rutasGeneradas = 0;
-      if (rutas && rutas.length > 0) {
-        console.log('📍 Enviando rutas GPS...');
-        for (const ruta of rutas) {
-          try {
-            await this.createRutaGPS(ruta);
-            rutasGeneradas++;
-          } catch (error: any) {
-            console.error('Error creando ruta GPS:', error);
-            errores.push(`Ruta GPS: ${error.message}`);
-          }
-        }
-      }
-
-      // 5. Guardar marca de datos cargados
+      // 4. Guardar marca de datos cargados
       await AsyncStorage.setItem(this.STORAGE_KEY, JSON.stringify({
         timestamp: new Date().toISOString(),
         config,
@@ -194,7 +132,7 @@ class TestDataService {
 
       const tiempoEjecucion = Date.now() - startTime;
 
-      console.log('✅ Carga completada exitosamente');
+      console.log('✅ Carga completada exitosamente (datos guardados localmente)');
       console.log(`⏱️ Tiempo: ${tiempoEjecucion}ms`);
 
       return {
@@ -242,48 +180,16 @@ class TestDataService {
 
       console.log(`✅ Generados: ${clientes.length} clientes en Zacatecas, ${entregas.length} entregas`);
 
-      // 2. Enviar clientes al backend
-      console.log('📤 Enviando clientes...');
-      let clientesCreados = 0;
-
-      for (const cliente of clientes) {
-        try {
-          await this.createCliente(cliente);
-          clientesCreados++;
-        } catch (error: any) {
-          console.error(`Error creando cliente ${cliente.nombre}:`, error);
-          errores.push(`Cliente ${cliente.nombre}: ${error.message}`);
-        }
-      }
-
-      // 3. Enviar entregas al backend
-      console.log('📤 Enviando entregas...');
-      let entregasCreadas = 0;
-
-      for (const entrega of entregas) {
-        try {
-          await this.createEntrega(entrega);
-          entregasCreadas++;
-        } catch (error: any) {
-          console.error(`Error creando entrega ${entrega.folio}:`, error);
-          errores.push(`Entrega ${entrega.folio}: ${error.message}`);
-        }
-      }
-
-      // 4. Enviar rutas GPS si existen
-      let rutasGeneradas = 0;
-      if (rutas && rutas.length > 0) {
-        console.log('📍 Enviando rutas GPS...');
-        for (const ruta of rutas) {
-          try {
-            await this.createRutaGPS(ruta);
-            rutasGeneradas++;
-          } catch (error: any) {
-            console.error('Error creando ruta GPS:', error);
-            errores.push(`Ruta GPS: ${error.message}`);
-          }
-        }
-      }
+      // 2. Convertir datos generados al formato ClienteEntregaDTO
+      const clientesDTO = await this.convertToClienteEntregaDTO(clientes, entregas);
+      
+      // 3. Guardar datos localmente usando AsyncStorage
+      console.log('💾 Guardando datos en almacenamiento local...');
+      await AsyncStorage.setItem('@FultraApps:clientesEntrega', JSON.stringify(clientesDTO));
+      
+      const clientesCreados = clientes.length;
+      const entregasCreadas = entregas.length;
+      const rutasGeneradas = rutas?.length || 0;
 
       // 5. Guardar marca de datos cargados
       await AsyncStorage.setItem(this.STORAGE_KEY, JSON.stringify({
@@ -327,6 +233,53 @@ class TestDataService {
         errores: [error.message, ...errores],
       };
     }
+  }
+
+  /**
+   * Convertir datos generados al formato ClienteEntregaDTO que usa la app
+   */
+  private async convertToClienteEntregaDTO(clientes: any[], entregas: any[]): Promise<any[]> {
+    // Agrupar entregas por cliente
+    const clientesMap = new Map();
+    
+    entregas.forEach(entrega => {
+      const clienteKey = entrega.cliente.rfc;
+      
+      if (!clientesMap.has(clienteKey)) {
+        clientesMap.set(clienteKey, {
+          cliente: entrega.cliente.nombre,
+          cuentaCliente: entrega.cliente.rfc,
+          carga: `CARGA-${entrega.folio.substring(0, 8)}`,
+          direccionEntrega: `${entrega.cliente.direccion.calle} ${entrega.cliente.direccion.numero}, ${entrega.cliente.direccion.colonia}, ${entrega.cliente.direccion.ciudad}, ${entrega.cliente.direccion.estado}`,
+          latitud: entrega.cliente.direccion.coordenadas?.latitud?.toString() || "0",
+          longitud: entrega.cliente.direccion.coordenadas?.longitud?.toString() || "0",
+          entregas: []
+        });
+      }
+      
+      const clienteDTO = clientesMap.get(clienteKey);
+      clienteDTO.entregas.push({
+        id: Math.floor(Math.random() * 100000),
+        ordenVenta: entrega.ordenVenta,
+        folio: entrega.folio,
+        tipoEntrega: entrega.tipoEntrega || "ENTREGA",
+        estado: entrega.estado || "PENDIENTE",
+        articulos: entrega.productos.map((p: any, idx: number) => ({
+          id: idx + 1,
+          nombreCarga: clienteDTO.carga,
+          nombreOrdenVenta: entrega.ordenVenta,
+          producto: p.nombre,
+          cantidadProgramada: p.cantidad,
+          cantidadEntregada: 0,
+          restante: p.cantidad,
+          peso: p.peso || 0,
+          unidadMedida: p.unidad || "pza",
+          descripcion: p.descripcion || p.nombre
+        }))
+      });
+    });
+    
+    return Array.from(clientesMap.values());
   }
 
   /**
@@ -405,23 +358,20 @@ class TestDataService {
   }
 
   /**
-   * Limpiar datos de prueba del backend
+   * Limpiar datos de prueba (SOLO LOCALES - SIN BACKEND)
    */
   async clearTestData(): Promise<TestDataResult> {
     const startTime = Date.now();
 
     try {
-      console.log('🗑️ Limpiando datos de prueba...');
+      console.log('🗑️ Limpiando datos de prueba mock (solo locales)...');
 
-      try {
-        await apiService.delete('/mobile/test/all');
-      } catch (error: any) {
-        console.warn('⚠️ Backend no implementado, limpiando solo datos locales');
-      }
-
+      // Limpiar todos los datos locales relacionados
       await AsyncStorage.removeItem(this.STORAGE_KEY);
+      await AsyncStorage.removeItem('@FultraApps:clientesEntrega');
+      await AsyncStorage.removeItem('@FultraApps:entregasSync');
 
-      console.log('✅ Datos limpiados exitosamente (locales)');
+      console.log('✅ Datos mock limpiados exitosamente (solo locales)');
 
       return {
         success: true,
