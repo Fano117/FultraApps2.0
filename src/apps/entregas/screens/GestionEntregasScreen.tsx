@@ -13,7 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import twrnc from 'twrnc';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker } from 'react-native-maps';
 
 import { simulationService, SimulacionEntrega } from '../services/simulationService';
 
@@ -595,7 +595,6 @@ export const GestionEntregasScreen: React.FC = () => {
           <View style={twrnc`flex-1`}>
             <MapView
               style={twrnc`flex-1`}
-              provider={PROVIDER_GOOGLE}
               initialRegion={{
                 latitude: coordinadasTemporal.lat,
                 longitude: coordinadasTemporal.lng,

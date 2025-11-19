@@ -26,7 +26,7 @@
           "DeliveryTracking": "Necesitamos tu ubicación para rastrear entregas en tiempo real"
         },
         "UIBackgroundModes": ["location"],
-        "LSApplicationQueriesSchemes": ["here-route", "googlemaps", "comgooglemaps"]
+        "LSApplicationQueriesSchemes": ["here-route", "here-location"]
       }
     },
     "android": {

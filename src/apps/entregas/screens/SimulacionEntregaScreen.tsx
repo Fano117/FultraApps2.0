@@ -9,7 +9,7 @@ import {
   StatusBar,
   Dimensions,
 } from 'react-native';
-import MapView, { Marker, Circle, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, Circle, Polyline } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Subscription } from 'rxjs';
@@ -194,7 +194,6 @@ export const SimulacionEntregaScreen: React.FC = () => {
         <View style={twrnc`flex-1`}>
           <MapView
             style={twrnc`flex-1`}
-            provider={PROVIDER_GOOGLE}
             initialRegion={{
               latitude: 25.686613,
               longitude: -100.316113,

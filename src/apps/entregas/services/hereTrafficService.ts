@@ -1,13 +1,14 @@
 /**
  * 🚦 HERE Traffic Service
- * 
+ *
  * Servicio para obtener información de tráfico en tiempo real usando HERE Traffic API v7
- * 
+ *
  * Documentación: https://developer.here.com/documentation/traffic-api/dev_guide/index.html
  * API Reference: https://developer.here.com/documentation/traffic-api/api-reference.html
  */
 
 import { config } from '@/shared/config/environments';
+import { hereMockConfig, mockLog } from './hereMockConfig';
 
 /**
  * Tipos de incidentes de tráfico
@@ -99,12 +100,18 @@ export interface RouteIncidentOptions {
 class HereTrafficService {
   private readonly API_KEY = config.hereMapsApiKey || '';
   private readonly TRAFFIC_API_BASE = 'https://data.traffic.hereapi.com/v7';
-  
+
   /**
    * Obtener incidentes de tráfico en un área
    */
   async getTrafficIncidents(bbox: BoundingBox): Promise<TrafficIncident[]> {
     try {
+      // Verificar si debe usar modo mock
+      if (hereMockConfig.shouldUseMock('traffic')) {
+        mockLog('TrafficService', `Consultando incidentes en bbox: ${bbox.west.toFixed(4)},${bbox.south.toFixed(4)} - ${bbox.east.toFixed(4)},${bbox.north.toFixed(4)}`);
+        return this.getTrafficIncidentsMock(bbox);
+      }
+
       if (!this.API_KEY || this.API_KEY.length < 20) {
         console.warn('[HereTrafficService] API Key no configurada');
         return [];
@@ -151,6 +158,12 @@ class HereTrafficService {
    */
   async getTrafficFlow(bbox: BoundingBox): Promise<TrafficFlow[]> {
     try {
+      // Verificar si debe usar modo mock
+      if (hereMockConfig.shouldUseMock('traffic')) {
+        mockLog('TrafficService', 'Consultando flujo de tráfico mock');
+        return this.getTrafficFlowMock(bbox);
+      }
+
       if (!this.API_KEY || this.API_KEY.length < 20) {
         console.warn('[HereTrafficService] API Key no configurada');
         return [];
@@ -487,6 +500,128 @@ class HereTrafficService {
     };
 
     return names[type] || 'Incidente';
+  }
+
+  // ========== MÉTODOS MOCK ==========
+
+  /**
+   * Generar incidentes de tráfico mock
+   */
+  private async getTrafficIncidentsMock(bbox: BoundingBox): Promise<TrafficIncident[]> {
+    await hereMockConfig.simulateDelay('traffic');
+
+    const tiposIncidente = [
+      TrafficIncidentType.CONGESTION,
+      TrafficIncidentType.ACCIDENT,
+      TrafficIncidentType.CONSTRUCTION,
+      TrafficIncidentType.ROAD_CLOSURE,
+      TrafficIncidentType.LANE_RESTRICTION,
+    ];
+
+    const calles = ['Av. Reforma', 'Periférico', 'Insurgentes', 'Circuito Interior', 'Viaducto'];
+
+    // Generar 0-5 incidentes aleatorios
+    const numIncidentes = Math.floor(Math.random() * 6);
+    const incidentes: TrafficIncident[] = [];
+
+    for (let i = 0; i < numIncidentes; i++) {
+      const tipo = tiposIncidente[Math.floor(Math.random() * tiposIncidente.length)];
+      const calle = calles[Math.floor(Math.random() * calles.length)];
+
+      // Coordenadas dentro del bbox
+      const lat = bbox.south + Math.random() * (bbox.north - bbox.south);
+      const lng = bbox.west + Math.random() * (bbox.east - bbox.west);
+
+      incidentes.push({
+        id: `mock_incident_${Date.now()}_${i}`,
+        type: tipo,
+        criticality: Math.floor(Math.random() * 5) as CriticalityLevel,
+        description: this.generateMockIncidentDescription(tipo, calle),
+        location: { latitude: lat, longitude: lng },
+        affectedRoads: [calle],
+        startTime: new Date(Date.now() - Math.random() * 3600000), // Última hora
+        endTime: Math.random() > 0.5 ? new Date(Date.now() + Math.random() * 7200000) : undefined,
+        verified: Math.random() > 0.3,
+      });
+    }
+
+    mockLog('TrafficService', `${incidentes.length} incidentes generados`);
+    return incidentes;
+  }
+
+  /**
+   * Generar flujo de tráfico mock
+   */
+  private async getTrafficFlowMock(bbox: BoundingBox): Promise<TrafficFlow[]> {
+    await hereMockConfig.simulateDelay('traffic');
+
+    const calles = ['Av. Reforma', 'Periférico', 'Insurgentes', 'Circuito Interior', 'Viaducto'];
+    const numSegmentos = Math.floor(Math.random() * 10) + 5;
+    const flujos: TrafficFlow[] = [];
+
+    for (let i = 0; i < numSegmentos; i++) {
+      const lat = bbox.south + Math.random() * (bbox.north - bbox.south);
+      const lng = bbox.west + Math.random() * (bbox.east - bbox.west);
+      const freeFlowSpeed = 50 + Math.random() * 30; // 50-80 km/h
+      const jamFactor = Math.random() * 10;
+      const currentSpeed = freeFlowSpeed * (1 - jamFactor / 15); // Velocidad reducida por tráfico
+
+      flujos.push({
+        latitude: lat,
+        longitude: lng,
+        currentSpeed: Math.max(5, currentSpeed),
+        freeFlowSpeed: freeFlowSpeed,
+        jamFactor: jamFactor,
+        confidence: 0.7 + Math.random() * 0.3,
+        roadName: calles[Math.floor(Math.random() * calles.length)],
+      });
+    }
+
+    mockLog('TrafficService', `${flujos.length} segmentos de flujo generados`);
+    return flujos;
+  }
+
+  /**
+   * Generar descripción de incidente mock
+   */
+  private generateMockIncidentDescription(type: TrafficIncidentType, calle: string): string {
+    const descripciones: Record<TrafficIncidentType, string[]> = {
+      [TrafficIncidentType.CONGESTION]: [
+        `Tráfico lento en ${calle}`,
+        `Congestión vehicular en ${calle}`,
+        `Alto volumen de tráfico en ${calle}`,
+      ],
+      [TrafficIncidentType.ACCIDENT]: [
+        `Accidente en ${calle}, carriles reducidos`,
+        `Colisión múltiple en ${calle}`,
+        `Accidente vehicular en ${calle}`,
+      ],
+      [TrafficIncidentType.CONSTRUCTION]: [
+        `Obras en ${calle}`,
+        `Reparación de pavimento en ${calle}`,
+        `Mantenimiento vial en ${calle}`,
+      ],
+      [TrafficIncidentType.ROAD_CLOSURE]: [
+        `Cierre total de ${calle}`,
+        `Vialidad cerrada en ${calle}`,
+        `${calle} cerrado al tráfico`,
+      ],
+      [TrafficIncidentType.LANE_RESTRICTION]: [
+        `Carril cerrado en ${calle}`,
+        `Reducción de carriles en ${calle}`,
+        `Un carril bloqueado en ${calle}`,
+      ],
+      [TrafficIncidentType.DISABLED_VEHICLE]: [`Vehículo descompuesto en ${calle}`],
+      [TrafficIncidentType.ROAD_HAZARD]: [`Obstáculo en ${calle}`],
+      [TrafficIncidentType.PLANNED_EVENT]: [`Evento programado en ${calle}`],
+      [TrafficIncidentType.MASS_TRANSIT]: [`Afectación de transporte en ${calle}`],
+      [TrafficIncidentType.OTHER_NEWS]: [`Incidente en ${calle}`],
+      [TrafficIncidentType.WEATHER]: [`Condiciones climáticas adversas en ${calle}`],
+      [TrafficIncidentType.MISC]: [`Incidente reportado en ${calle}`],
+    };
+
+    const opciones = descripciones[type] || [`Incidente en ${calle}`];
+    return opciones[Math.floor(Math.random() * opciones.length)];
   }
 }
 

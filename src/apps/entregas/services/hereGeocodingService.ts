@@ -1,14 +1,15 @@
 /**
  * 📍 HERE Geocoding Service
- * 
+ *
  * Servicio para geocodificación, reverse geocoding y búsqueda de lugares
  * usando HERE Geocoding & Search API v7.
- * 
+ *
  * Documentación: https://developer.here.com/documentation/geocoding-search-api/dev_guide/index.html
  * API Reference: https://developer.here.com/documentation/geocoding-search-api/api-reference.html
  */
 
 import { config } from '@/shared/config/environments';
+import { hereMockConfig, mockLog } from './hereMockConfig';
 
 /**
  * Resultado de geocodificación
@@ -93,6 +94,12 @@ class HereGeocodingService {
         return [];
       }
 
+      // Verificar si debe usar modo mock
+      if (hereMockConfig.shouldUseMock('geocoding')) {
+        mockLog('GeocodingService', `Geocodificando: "${address}"`);
+        return this.geocodeMock(address, options);
+      }
+
       console.log(`[HereGeocodingService] 🔍 Geocodificando: "${address}"`);
 
       const params = new URLSearchParams({
@@ -155,6 +162,12 @@ class HereGeocodingService {
     options: { language?: string } = {}
   ): Promise<GeocodingResult | null> {
     try {
+      // Verificar si debe usar modo mock
+      if (hereMockConfig.shouldUseMock('geocoding')) {
+        mockLog('GeocodingService', `Reverse geocoding: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+        return this.reverseGeocodeMock(latitude, longitude);
+      }
+
       console.log(
         `[HereGeocodingService] 📍 Reverse geocoding: ${latitude}, ${longitude}`
       );
@@ -426,6 +439,105 @@ class HereGeocodingService {
 
     // Formato completo
     return addr.label;
+  }
+
+  // ========== MÉTODOS MOCK ==========
+
+  /**
+   * Geocodificación mock
+   */
+  private async geocodeMock(address: string, options: SearchOptions = {}): Promise<GeocodingResult[]> {
+    await hereMockConfig.simulateDelay('geocoding');
+
+    const callesMock = [
+      { street: 'Av. Reforma', city: 'Ciudad de México', state: 'CDMX' },
+      { street: 'Calle Hidalgo', city: 'Guadalajara', state: 'Jalisco' },
+      { street: 'Blvd. Principal', city: 'Monterrey', state: 'Nuevo León' },
+      { street: 'Av. Juárez', city: 'Puebla', state: 'Puebla' },
+      { street: 'Calle Morelos', city: 'León', state: 'Guanajuato' },
+    ];
+
+    const numResultados = Math.min(options.limit || 5, callesMock.length);
+    const results: GeocodingResult[] = [];
+
+    // Coordenadas base (México central)
+    const baseLat = options.at?.latitude || 19.4326;
+    const baseLng = options.at?.longitude || -99.1332;
+
+    for (let i = 0; i < numResultados; i++) {
+      const calleMock = callesMock[i % callesMock.length];
+      const numero = Math.floor(Math.random() * 1000) + 100;
+      const cp = Math.floor(Math.random() * 90000) + 10000;
+
+      // Generar coordenadas cercanas al punto base
+      const lat = baseLat + (Math.random() - 0.5) * 0.1;
+      const lng = baseLng + (Math.random() - 0.5) * 0.1;
+
+      results.push({
+        id: `mock_${Date.now()}_${i}`,
+        title: `${calleMock.street} ${numero}`,
+        address: {
+          label: `${calleMock.street} ${numero}, ${calleMock.city}, ${calleMock.state}, ${cp}, México`,
+          countryCode: 'MEX',
+          countryName: 'México',
+          state: calleMock.state,
+          city: calleMock.city,
+          street: calleMock.street,
+          houseNumber: String(numero),
+          postalCode: String(cp),
+        },
+        position: {
+          latitude: lat,
+          longitude: lng,
+        },
+        resultType: 'houseNumber',
+        scoring: {
+          queryScore: 0.85 - i * 0.1,
+          fieldScore: { streets: [0.9] },
+        },
+      });
+    }
+
+    mockLog('GeocodingService', `${results.length} resultado(s) generados`);
+    return results;
+  }
+
+  /**
+   * Reverse geocoding mock
+   */
+  private async reverseGeocodeMock(latitude: number, longitude: number): Promise<GeocodingResult> {
+    await hereMockConfig.simulateDelay('geocoding');
+
+    const calles = ['Av. Reforma', 'Calle Hidalgo', 'Blvd. Principal', 'Av. Juárez', 'Calle Morelos'];
+    const ciudades = ['Ciudad de México', 'Guadalajara', 'Monterrey', 'Puebla', 'León'];
+    const estados = ['CDMX', 'Jalisco', 'Nuevo León', 'Puebla', 'Guanajuato'];
+
+    const idx = Math.floor(Math.random() * calles.length);
+    const numero = Math.floor(Math.random() * 1000) + 100;
+    const cp = Math.floor(Math.random() * 90000) + 10000;
+
+    const result: GeocodingResult = {
+      id: `mock_reverse_${Date.now()}`,
+      title: `${calles[idx]} ${numero}`,
+      address: {
+        label: `${calles[idx]} ${numero}, ${ciudades[idx]}, ${estados[idx]}, ${cp}, México`,
+        countryCode: 'MEX',
+        countryName: 'México',
+        state: estados[idx],
+        city: ciudades[idx],
+        street: calles[idx],
+        houseNumber: String(numero),
+        postalCode: String(cp),
+      },
+      position: {
+        latitude,
+        longitude,
+      },
+      resultType: 'houseNumber',
+    };
+
+    mockLog('GeocodingService', `Dirección: ${result.address.label}`);
+    return result;
   }
 }
 

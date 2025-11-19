@@ -7,7 +7,10 @@ export * from './locationService';
 export * from './geofenceService';
 export * from './notificationService';
 
-// HERE Maps Services (existing)
+// HERE Maps Configuration (Mock System)
+export * from './hereMockConfig';
+
+// HERE Maps Services (existing - now with mock support)
 export * from './routingService';
 export * from './hereGeocodingService';
 export * from './hereTrafficService';
@@ -20,5 +23,7 @@ export * from './hereMatrixRoutingService';
 export * from './hereDestinationWeatherService';
 export * from './hereFleetTelematicsService';
 export * from './hereAdvancedGeofencingService';
+export * from './hereVectorTilesService';
+export * from './hereMapProviderService';
 
 export * from '../api';

@@ -10,7 +10,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MapView, { Marker, Circle, Polyline, Region, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, Circle, Polyline, Region } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -22,6 +22,7 @@ import { routingService, RutaOptima } from '@/apps/entregas/services/routingServ
 import { EntregasStackParamList } from '@/navigation/types';
 import { TipoRegistro } from '@/apps/entregas/models';
 import { colors, spacing, typography } from '@/design-system/theme';
+import { HereServicesStatusButton } from '@/apps/entregas/components/HereServicesStatusButton';
 
 type DeliveryMapScreenRouteProp = RouteProp<EntregasStackParamList, 'EntregaTracking'>;
 type DeliveryMapScreenNavigationProp = NativeStackNavigationProp<EntregasStackParamList, 'EntregaTracking'>;
@@ -864,7 +865,6 @@ export const DeliveryMapScreen: React.FC = () => {
         <MapView
           ref={mapRef}
           style={styles.map}
-          provider={PROVIDER_GOOGLE}
           showsUserLocation={false}
           showsMyLocationButton={false}
           initialRegion={{
@@ -949,6 +949,9 @@ export const DeliveryMapScreen: React.FC = () => {
             </View>
           </Marker>
         </MapView>
+
+        {/* Botón de estado de servicios HERE Maps */}
+        <HereServicesStatusButton position="top-left" showBadge={true} />
 
         {/* Controles del mapa */}
         <View style={styles.mapControls}>

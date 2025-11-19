@@ -7,8 +7,7 @@ export interface EnvironmentConfig {
   apiKey: string;
   apiLogin: string;
   identityUrl: string;
-  googleMapsApiKey?: string;
-  hereMapsApiKey?: string;
+  hereMapsApiKey: string; // HERE Maps API Key (required)
   oauth: {
     clientId: string;
     clientSecret: string;
@@ -28,8 +27,7 @@ export const environments: Record<string, EnvironmentConfig> = {
     apiKey: 'qXwXO937WpdJ4MCnUMx77a7B6CIuwqDDAe1kr6rPc9A=',
     apiLogin: BASE_LOGIN,
     identityUrl: 'https://identity.fultra.net',
-    googleMapsApiKey: 'AIzaSyBfYWCcrQCaOrvnqYVPTLZFhOuaLgBp12Q', // TODO: Configurar API Key real
-    hereMapsApiKey: 'GYo3JTyTU2DjUu_dGyaDc2LIZyANv1zL5-Lot729yhw', // TODO: Configurar HERE Maps API Key real
+    hereMapsApiKey: 'GYo3JTyTU2DjUu_dGyaDc2LIZyANv1zL5-Lot729yhw', // HERE Maps API Key
     oauth: {
       clientId: 'fultraTrackReactNative', // ✅ Client ID correcto
       clientSecret: 'Fu1traTr9ck2025#$',
@@ -60,6 +58,7 @@ export const environments: Record<string, EnvironmentConfig> = {
     apiKey: 'qXwXO937WpdJ4MCnUMx77a7B6CIuwqDDAe1kr6rPc9A=',
     apiLogin: BASE_LOGIN,
     identityUrl: 'https://identity.fultra.net',
+    hereMapsApiKey: 'GYo3JTyTU2DjUu_dGyaDc2LIZyANv1zL5-Lot729yhw', // HERE Maps API Key
     oauth: {
       clientId: 'fultraTrackReactNative',
       clientSecret: 'Fu1traTr9ck2025#$',
@@ -77,6 +76,7 @@ export const environments: Record<string, EnvironmentConfig> = {
     apiKey: 'qXwXO937WpdJ4MCnUMx77a7B6CIuwqDDAe1kr6rPc9A=',
     apiLogin: BASE_LOGIN,
     identityUrl: 'https://identity.fultra.net',
+    hereMapsApiKey: 'GYo3JTyTU2DjUu_dGyaDc2LIZyANv1zL5-Lot729yhw', // HERE Maps API Key
     oauth: {
       clientId: 'fultraTrackReactNative', // ✅ Usar el mismo client ID que production
       clientSecret: 'Fu1traTr9ck2025#$',
@@ -89,6 +89,7 @@ export const environments: Record<string, EnvironmentConfig> = {
     apiKey: 'qXwXO937WpdJ4MCnUMx77a7B6CIuwqDDAe1kr6rPc9A=',
     apiLogin: BASE_LOGIN,
     identityUrl: 'https://identity.fultra.net',
+    hereMapsApiKey: 'GYo3JTyTU2DjUu_dGyaDc2LIZyANv1zL5-Lot729yhw', // HERE Maps API Key
     oauth: {
       clientId: 'fultraapps_mobile',
       clientSecret: 'Fu1traTr9ck2025#$',

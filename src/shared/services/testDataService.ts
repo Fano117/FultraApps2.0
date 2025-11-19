@@ -14,6 +14,111 @@ import {
 } from '../models/testData.models';
 
 class TestDataService {
+  /**
+   * Cargar datos de prueba específicos para Monterrey
+   */
+  async loadTestDataMonterrey(config: TestDataConfig): Promise<TestDataResult> {
+    const startTime = Date.now();
+    const errores: string[] = [];
+
+    try {
+      console.log('🚀 Iniciando carga de datos de prueba para Monterrey...');
+      console.log('Configuración:', config);
+
+      // 1. Generar datos específicos para Monterrey
+      if (!testDataGenerator.generateTestDataSet) {
+        throw new Error('Función generateTestDataSet no implementada');
+      }
+      // Añadir 'ubicacion' sin romper el tipo TestDataConfig
+      const monterreyConfig = { ...(config as any), ubicacion: 'Monterrey' } as TestDataConfig;
+      const { clientes, entregas, rutas } = testDataGenerator.generateTestDataSet(monterreyConfig);
+
+      console.log(`✅ Generados: ${clientes.length} clientes en Monterrey, ${entregas.length} entregas`);
+
+      // 2. Enviar clientes al backend
+      console.log('📤 Enviando clientes...');
+      let clientesCreados = 0;
+      for (const cliente of clientes) {
+        try {
+          await this.createCliente(cliente);
+          clientesCreados++;
+        } catch (error: any) {
+          console.error(`Error creando cliente ${cliente.nombre}:`, error);
+          errores.push(`Cliente ${cliente.nombre}: ${error.message}`);
+        }
+      }
+
+      // 3. Enviar entregas al backend
+      console.log('📤 Enviando entregas...');
+      let entregasCreadas = 0;
+      for (const entrega of entregas) {
+        try {
+          await this.createEntrega(entrega);
+          entregasCreadas++;
+        } catch (error: any) {
+          console.error(`Error creando entrega ${entrega.folio}:`, error);
+          errores.push(`Entrega ${entrega.folio}: ${error.message}`);
+        }
+      }
+
+      // 4. Enviar rutas GPS si existen
+      let rutasGeneradas = 0;
+      if (rutas && rutas.length > 0) {
+        console.log('📍 Enviando rutas GPS...');
+        for (const ruta of rutas) {
+          try {
+            await this.createRutaGPS(ruta);
+            rutasGeneradas++;
+          } catch (error: any) {
+            console.error('Error creando ruta GPS:', error);
+            errores.push(`Ruta GPS: ${error.message}`);
+          }
+        }
+      }
+
+      // 5. Guardar marca de datos cargados
+      await AsyncStorage.setItem(this.STORAGE_KEY, JSON.stringify({
+        timestamp: new Date().toISOString(),
+        config: { ...config, ubicacion: 'Monterrey' },
+        results: {
+          clientesCreados,
+          entregasCreadas,
+          rutasGeneradas,
+        },
+      }));
+
+      const tiempoEjecucion = Date.now() - startTime;
+
+      console.log('✅ Carga completada exitosamente para Monterrey');
+      console.log(`⏱️ Tiempo: ${tiempoEjecucion}ms`);
+
+      return {
+        success: true,
+        message: 'Datos de prueba para Monterrey cargados exitosamente',
+        data: {
+          clientesCreados,
+          entregasCreadas,
+          rutasGeneradas,
+          tiempoEjecucion,
+        },
+        errores: errores.length > 0 ? errores : undefined,
+      };
+    } catch (error: any) {
+      console.error('❌ Error cargando datos de Monterrey:', error);
+
+      return {
+        success: false,
+        message: `Error cargando datos de Monterrey: ${error.message}`,
+        data: {
+          clientesCreados: 0,
+          entregasCreadas: 0,
+          rutasGeneradas: 0,
+          tiempoEjecucion: Date.now() - startTime,
+        },
+        errores: [error.message, ...errores],
+      };
+    }
+  }
   private readonly STORAGE_KEY = '@FultraApps:test_data_loaded';
 
   /**

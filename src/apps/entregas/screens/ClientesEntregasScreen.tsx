@@ -13,6 +13,7 @@ import { Card, Typography, Badge, Button, colors, spacing, borderRadius } from '
 import { useAppSelector, useAppDispatch } from '@/shared/hooks';
 import { fetchEmbarques, fetchEmbarquesWithTestData, loadLocalData, crearDatosPrueba } from '../store/entregasSlice';
 import { ClienteEntregaDTO } from '../models';
+import { testDataService } from '@/shared/services/testDataService';
 import { EntregasStackParamList } from '@/navigation/types';
 import { mobileApiService } from '../services';
 
@@ -21,10 +22,21 @@ type NavigationProp = NativeStackNavigationProp<EntregasStackParamList, 'Cliente
 type FiltroEstado = 'Pendientes' | 'Pend. Envío' | 'Entregadas' | 'Enviadas' | 'No Entregadas' | 'Todos';
 
 const ClientesEntregasScreen: React.FC = () => {
+  // Eliminar todas las entregas de prueba usando el servicio
+  const eliminarEntregasPrueba = async () => {
+    try {
+      await testDataService.clearTestData();
+      await loadData();
+    } catch (error) {
+      console.error('[CLIENTES SCREEN] ❌ Error eliminando entregas de prueba:', error);
+    }
+  };
   const navigation = useNavigation<NavigationProp>();
   const dispatch = useAppDispatch();
   const { clientes, loading, entregasSync } = useAppSelector((state) => state.entregas);
   const [filtroActivo, setFiltroActivo] = useState<FiltroEstado>('Pendientes');
+  // Filtrar solo entregas de prueba
+  const clientesTestData = clientes ? clientes.filter(c => c.carga?.includes('TEST') || c.cuentaCliente?.includes('TEST')) : [];
 
   useEffect(() => {
     loadData();
@@ -154,7 +166,7 @@ const ClientesEntregasScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+  <View style={styles.container}>
       <View style={styles.header}>
         <Typography variant="h5">Clientes - Entregas</Typography>
         <View style={styles.headerActions}>
@@ -202,7 +214,7 @@ const ClientesEntregasScreen: React.FC = () => {
       </View>
 
       <FlatList
-        data={clientes}
+  data={clientesTestData}
         renderItem={renderCliente}
         keyExtractor={(item, index) => `${item.carga}-${item.cuentaCliente}-${index}`}
         contentContainerStyle={styles.listContent}
@@ -258,6 +270,15 @@ const ClientesEntregasScreen: React.FC = () => {
               leftIcon={<Ionicons name="flask-outline" size={16} color={colors.neutral[600]} />}
             >
               Cargar Datos Existentes
+            </Button>
+            <Button
+              variant="secondary"
+              size="small"
+              onPress={eliminarEntregasPrueba}
+              style={styles.debugTestButton}
+              leftIcon={<Ionicons name="trash-outline" size={16} color={colors.error[600]} />}
+            >
+              Eliminar Entregas de Prueba
             </Button>
           </View>
         }
