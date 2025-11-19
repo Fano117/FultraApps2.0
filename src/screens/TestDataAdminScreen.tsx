@@ -29,6 +29,7 @@ export default function TestDataAdminScreen() {
   const [generarRuta, setGenerarRuta] = useState(true);
   const [simularEstados, setSimularEstados] = useState(true);
   const [ubicacionZacatecas, setUbicacionZacatecas] = useState(false);
+  const [ubicacionMonterrey, setUbicacionMonterrey] = useState(false);
 
   useEffect(() => {
     checkExistingData();
@@ -45,8 +46,10 @@ export default function TestDataAdminScreen() {
   };
 
   const handleLoadData = async () => {
-    const ubicacion = ubicacionZacatecas ? 'Zacatecas, Zac.' : 'Guadalajara, Jal.';
-    
+    let ubicacion = 'Guadalajara, Jal.';
+    if (ubicacionZacatecas) ubicacion = 'Zacatecas, Zac.';
+    if (ubicacionMonterrey) ubicacion = 'Monterrey, NL';
+
     Alert.alert(
       'Cargar Datos de Prueba',
       `Se generarán:\n• ${numClientes} clientes en ${ubicacion}\n• ${numClientes * numEntregas} entregas\n• ${generarRuta ? 'Rutas GPS' : 'Sin rutas'}\n\n¿Continuar?`,
@@ -65,12 +68,22 @@ export default function TestDataAdminScreen() {
                 simularEstados,
               };
 
-              // Usar servicio específico según la ubicación seleccionada
-              const result = ubicacionZacatecas 
-                ? await testDataService.loadTestDataZacatecas(config)
-                : await testDataService.loadTestData(config);
+              let result;
+              if (ubicacionZacatecas) {
+                result = await testDataService.loadTestDataZacatecas(config);
+              } else if (ubicacionMonterrey) {
+                if (testDataService.loadTestDataMonterrey) {
+                  result = await testDataService.loadTestDataMonterrey(config);
+                } else {
+                  Alert.alert('No implementado', 'La función de datos de Monterrey no está disponible.');
+                  setLoading(false);
+                  return;
+                }
+              } else {
+                result = await testDataService.loadTestData(config);
+              }
 
-              if (result.success) {
+              if (result && result.success) {
                 Alert.alert(
                   '✅ Datos Cargados',
                   `Ubicación: ${ubicacion}\nClientes: ${result.data.clientesCreados}\nEntregas: ${result.data.entregasCreadas}\nRutas: ${result.data.rutasGeneradas}\n\nTiempo: ${result.data.tiempoEjecucion}ms`,
@@ -80,7 +93,7 @@ export default function TestDataAdminScreen() {
               } else {
                 Alert.alert(
                   '❌ Error',
-                  result.message,
+                  result?.message || 'Error desconocido',
                   [{ text: 'OK' }]
                 );
               }
@@ -248,15 +261,32 @@ export default function TestDataAdminScreen() {
             value={ubicacionZacatecas}
             onValueChange={(value) => {
               setUbicacionZacatecas(value);
-              // Si se activa Zacatecas, usar configuración optimizada
               if (value) {
                 setNumClientes(5);
                 setNumEntregas(1);
                 setGenerarRuta(true);
+                setUbicacionMonterrey(false);
               }
             }}
             disabled={loading}
             trackColor={{ false: '#ccc', true: '#10B981' }}
+          />
+        </View>
+        <View style={styles.switchRow}>
+          <Text style={styles.configLabel}>📍 Ubicar en Monterrey</Text>
+          <Switch
+            value={ubicacionMonterrey}
+            onValueChange={(value) => {
+              setUbicacionMonterrey(value);
+              if (value) {
+                setNumClientes(5);
+                setNumEntregas(1);
+                setGenerarRuta(true);
+                setUbicacionZacatecas(false);
+              }
+            }}
+            disabled={loading}
+            trackColor={{ false: '#ccc', true: '#3B82F6' }}
           />
         </View>
 
@@ -270,6 +300,19 @@ export default function TestDataAdminScreen() {
               • Mercado González Ortega{'\n'}
               • Campus Universitario{'\n'}
               • Boulevard López Portillo
+            </Text>
+          </View>
+        )}
+        {ubicacionMonterrey && (
+          <View style={styles.zacatecasInfo}>
+            <Text style={[styles.zacatecasInfoTitle, { color: '#3B82F6' }]}>🌆 Ubicaciones de Monterrey</Text>
+            <Text style={styles.zacatecasInfoText}>
+              Se generarán entregas en lugares emblemáticos:{'\n'}
+              • Macroplaza{'\n'}
+              • Parque Fundidora{'\n'}
+              • Cerro de la Silla{'\n'}
+              • Estadio BBVA{'\n'}
+              • Paseo Santa Lucía
             </Text>
           </View>
         )}
@@ -328,7 +371,35 @@ export default function TestDataAdminScreen() {
 
             <TouchableOpacity
               style={[styles.button, styles.buttonDanger, loading && styles.buttonDisabled]}
-              onPress={handleClearData}
+              onPress={async () => {
+                Alert.alert(
+                  '⚠️ Limpiar Datos',
+                  'Esto eliminará TODOS los datos de prueba del backend. ¿Estás seguro?',
+                  [
+                    { text: 'Cancelar', style: 'cancel' },
+                    {
+                      text: 'Eliminar',
+                      style: 'destructive',
+                      onPress: async () => {
+                        setLoading(true);
+                        try {
+                          const result = await testDataService.clearTestData();
+                          if (result.success) {
+                            Alert.alert('✅ Datos Eliminados', 'Todos los datos de prueba han sido eliminados');
+                            await checkExistingData();
+                          } else {
+                            Alert.alert('❌ Error', result.message);
+                          }
+                        } catch (error: any) {
+                          Alert.alert('Error', error.message);
+                        } finally {
+                          setLoading(false);
+                        }
+                      },
+                    },
+                  ]
+                );
+              }}
               disabled={loading}
             >
               <Text style={styles.buttonIcon}>🗑️</Text>

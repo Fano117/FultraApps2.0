@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import { Linking } from 'react-native';
 import { config } from '@/shared/config/environments';
 import * as flexpolyline from '@here/flexpolyline';
+import { hereMockConfig, mockLog } from './hereMockConfig';
 
 export interface RutaOptima {
   distance: number; // en metros
@@ -55,6 +56,12 @@ class RoutingService {
     destino: Ubicacion
   ): Promise<RutaOptima> {
     try {
+      // Verificar si debe usar modo mock
+      if (hereMockConfig.shouldUseMock('routing')) {
+        mockLog('RoutingService', `Calculando ruta mock de ${origen.latitude.toFixed(4)},${origen.longitude.toFixed(4)} a ${destino.latitude.toFixed(4)},${destino.longitude.toFixed(4)}`);
+        return this.calcularRutaMock(origen, destino);
+      }
+
       // Verificar si tenemos una API Key válida
       if (!this.HERE_API_KEY || this.HERE_API_KEY.length < 20) {
         this.log('warning', '🚨 HERE Maps API Key no configurada correctamente, usando fallback');
@@ -226,6 +233,212 @@ class RoutingService {
     this.log('warning', '⚠️ Usando ruta fallback (línea directa) - Las rutas podrían no ser óptimas');
     this.rutaActual.next(rutaFallback);
     return rutaFallback;
+  }
+
+  /**
+   * Calcular ruta usando datos simulados (MOCK)
+   * Genera una ruta realista con múltiples puntos intermedios
+   */
+  private async calcularRutaMock(origen: Ubicacion, destino: Ubicacion): Promise<RutaOptima> {
+    // Simular delay de red
+    await hereMockConfig.simulateDelay('routing');
+
+    const distanciaDirecta = this.calcularDistancia(origen, destino);
+
+    // Factor de ruta real (las rutas reales son ~1.3-1.5x más largas que línea recta)
+    const factorRuta = 1.3 + Math.random() * 0.3; // 1.3 a 1.6
+    const distanciaReal = distanciaDirecta * factorRuta;
+
+    // Velocidad promedio en ciudad con tráfico (35-45 km/h)
+    const velocidadPromedio = 35 + Math.random() * 10;
+    const duracionSegundos = (distanciaReal / 1000) / velocidadPromedio * 3600;
+
+    // Generar puntos intermedios realistas
+    const numPuntos = Math.min(Math.max(Math.floor(distanciaReal / 100), 10), 150);
+    const coordinates = this.generarPuntosIntermediosMock(origen, destino, numPuntos);
+
+    // Generar instrucciones de navegación mock
+    const instructions = this.generarInstruccionesMock(distanciaReal, coordinates.length);
+
+    const rutaMock: RutaOptima = {
+      distance: distanciaReal,
+      duration: duracionSegundos,
+      coordinates,
+      instructions,
+      estimatedArrival: new Date(Date.now() + duracionSegundos * 1000)
+    };
+
+    mockLog('RoutingService', `Ruta generada: ${(distanciaReal/1000).toFixed(2)}km, ${Math.round(duracionSegundos/60)}min, ${coordinates.length} puntos`);
+
+    this.rutaActual.next(rutaMock);
+    return rutaMock;
+  }
+
+  /**
+   * Generar puntos intermedios realistas para la ruta mock
+   * Simula rutas reales siguiendo patrones de cuadrícula urbana (calles perpendiculares)
+   */
+  private generarPuntosIntermediosMock(origen: Ubicacion, destino: Ubicacion, numPuntos: number): Ubicacion[] {
+    const puntos: Ubicacion[] = [origen];
+
+    // Calcular diferencias
+    const deltaLat = destino.latitude - origen.latitude;
+    const deltaLng = destino.longitude - origen.longitude;
+
+    // Estrategia: Generar ruta tipo "L" o "escalera" que simula calles reales
+    // Las calles urbanas típicamente están orientadas Norte-Sur y Este-Oeste
+
+    // Determinar número de segmentos (giros)
+    const numSegmentos = Math.max(2, Math.min(8, Math.floor(numPuntos / 15)));
+
+    // Decidir patrón de ruta: alternar entre movimiento horizontal y vertical
+    // Esto simula seguir la cuadrícula de calles
+    const esHorizontalPrimero = Math.abs(deltaLng) > Math.abs(deltaLat);
+
+    let currentLat = origen.latitude;
+    let currentLng = origen.longitude;
+
+    // Generar puntos de giro (waypoints principales)
+    const waypoints: Ubicacion[] = [];
+
+    for (let seg = 0; seg < numSegmentos; seg++) {
+      const progreso = (seg + 1) / numSegmentos;
+
+      // Alternar entre movimiento horizontal y vertical
+      const esMovimientoHorizontal = esHorizontalPrimero ? (seg % 2 === 0) : (seg % 2 === 1);
+
+      if (esMovimientoHorizontal) {
+        // Mover en longitud (Este-Oeste)
+        currentLng = origen.longitude + deltaLng * progreso;
+      } else {
+        // Mover en latitud (Norte-Sur)
+        currentLat = origen.latitude + deltaLat * progreso;
+      }
+
+      // Agregar pequeña variación para evitar rutas perfectamente rectas
+      const variacion = 0.0001 * (Math.random() - 0.5);
+
+      waypoints.push({
+        latitude: currentLat + (esMovimientoHorizontal ? variacion : 0),
+        longitude: currentLng + (!esMovimientoHorizontal ? variacion : 0)
+      });
+    }
+
+    // Interpolar puntos entre waypoints para suavizar la ruta
+    const puntosEntrePuntos = Math.max(3, Math.floor(numPuntos / (waypoints.length + 1)));
+
+    let puntoAnterior = origen;
+
+    for (const waypoint of waypoints) {
+      // Generar puntos intermedios entre punto anterior y waypoint actual
+      for (let i = 1; i <= puntosEntrePuntos; i++) {
+        const t = i / (puntosEntrePuntos + 1);
+
+        // Interpolación lineal con pequeña variación perpendicular
+        const lat = puntoAnterior.latitude + (waypoint.latitude - puntoAnterior.latitude) * t;
+        const lng = puntoAnterior.longitude + (waypoint.longitude - puntoAnterior.longitude) * t;
+
+        // Agregar pequeña variación perpendicular para simular anchura de calle
+        const variacionPerpendicular = (Math.random() - 0.5) * 0.00005;
+
+        // Determinar dirección perpendicular
+        const direccionLat = waypoint.latitude - puntoAnterior.latitude;
+        const direccionLng = waypoint.longitude - puntoAnterior.longitude;
+        const magnitud = Math.sqrt(direccionLat * direccionLat + direccionLng * direccionLng);
+
+        if (magnitud > 0) {
+          // Vector perpendicular normalizado
+          const perpLat = -direccionLng / magnitud;
+          const perpLng = direccionLat / magnitud;
+
+          puntos.push({
+            latitude: lat + perpLat * variacionPerpendicular,
+            longitude: lng + perpLng * variacionPerpendicular
+          });
+        } else {
+          puntos.push({ latitude: lat, longitude: lng });
+        }
+      }
+
+      puntos.push(waypoint);
+      puntoAnterior = waypoint;
+    }
+
+    // Agregar puntos finales hacia el destino
+    const puntosFinales = Math.max(2, Math.floor(puntosEntrePuntos / 2));
+    for (let i = 1; i <= puntosFinales; i++) {
+      const t = i / (puntosFinales + 1);
+      const lat = puntoAnterior.latitude + (destino.latitude - puntoAnterior.latitude) * t;
+      const lng = puntoAnterior.longitude + (destino.longitude - puntoAnterior.longitude) * t;
+      puntos.push({ latitude: lat, longitude: lng });
+    }
+
+    puntos.push(destino);
+
+    // Limitar número total de puntos si excede el solicitado
+    if (puntos.length > numPuntos) {
+      return this.simplificarRuta(puntos, numPuntos);
+    }
+
+    return puntos;
+  }
+
+  /**
+   * Simplifica una ruta reduciendo el número de puntos
+   * Mantiene los puntos más importantes (inicio, fin, giros)
+   */
+  private simplificarRuta(puntos: Ubicacion[], numPuntosDeseados: number): Ubicacion[] {
+    if (puntos.length <= numPuntosDeseados) {
+      return puntos;
+    }
+
+    const resultado: Ubicacion[] = [puntos[0]]; // Siempre incluir origen
+    const paso = (puntos.length - 2) / (numPuntosDeseados - 2);
+
+    for (let i = 1; i < numPuntosDeseados - 1; i++) {
+      const indice = Math.min(Math.floor(i * paso), puntos.length - 2);
+      resultado.push(puntos[indice]);
+    }
+
+    resultado.push(puntos[puntos.length - 1]); // Siempre incluir destino
+    return resultado;
+  }
+
+  /**
+   * Generar instrucciones de navegación mock
+   */
+  private generarInstruccionesMock(distanciaTotal: number, numPuntos: number): string[] {
+    const calles = [
+      'Av. Reforma', 'Calle Hidalgo', 'Blvd. Principal', 'Av. Juárez',
+      'Calle Morelos', 'Av. Universidad', 'Periférico Norte', 'Calle Madero',
+      'Av. Insurgentes', 'Calle 5 de Mayo', 'Blvd. López Mateos'
+    ];
+
+    const instrucciones: string[] = [];
+    const numInstrucciones = Math.min(Math.floor(numPuntos / 20) + 2, 10);
+    const distanciaPorTramo = distanciaTotal / numInstrucciones;
+
+    instrucciones.push(`Dirigirse hacia ${calles[Math.floor(Math.random() * calles.length)]}`);
+
+    for (let i = 1; i < numInstrucciones - 1; i++) {
+      const accion = Math.random();
+      const calle = calles[Math.floor(Math.random() * calles.length)];
+      const dist = Math.round(distanciaPorTramo * (0.8 + Math.random() * 0.4));
+
+      if (accion < 0.3) {
+        instrucciones.push(`En ${dist}m, girar a la derecha en ${calle}`);
+      } else if (accion < 0.6) {
+        instrucciones.push(`En ${dist}m, girar a la izquierda en ${calle}`);
+      } else if (accion < 0.8) {
+        instrucciones.push(`Continuar recto por ${calle} durante ${dist}m`);
+      } else {
+        instrucciones.push(`Tomar la rotonda, segunda salida hacia ${calle}`);
+      }
+    }
+
+    instrucciones.push(`Ha llegado a su destino (${(distanciaTotal / 1000).toFixed(1)} km total)`);
+
+    return instrucciones;
   }
 
   /**

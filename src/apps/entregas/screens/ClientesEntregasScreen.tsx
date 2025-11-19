@@ -11,10 +11,9 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Card, Typography, Badge, Button, colors, spacing, borderRadius } from '@/design-system';
 import { useAppSelector, useAppDispatch } from '@/shared/hooks';
-import { fetchEmbarques, fetchEmbarquesWithTestData, loadLocalData, crearDatosPrueba } from '../store/entregasSlice';
+import { fetchEmbarques, loadLocalData } from '../store/entregasSlice';
 import { ClienteEntregaDTO } from '../models';
 import { EntregasStackParamList } from '@/navigation/types';
-import { mobileApiService } from '../services';
 
 type NavigationProp = NativeStackNavigationProp<EntregasStackParamList, 'ClientesEntregas'>;
 
@@ -40,30 +39,7 @@ const ClientesEntregasScreen: React.FC = () => {
     }
   };
 
-  const loadTestData = async () => {
-    try {
-      console.log('[CLIENTES SCREEN] 🧪 Cargando datos de prueba...');
-      await dispatch(loadLocalData());
-      await dispatch(fetchEmbarquesWithTestData());
-    } catch (error) {
-      console.error('[CLIENTES SCREEN] ❌ Error cargando datos de prueba:', error);
-    }
-  };
 
-  const crearNuevosDatosPrueba = async () => {
-    try {
-      console.log('[CLIENTES SCREEN] 🏗️ Creando nuevos datos de prueba...');
-      await dispatch(crearDatosPrueba({
-        cantidadClientes: 3,
-        cantidadEntregas: 5,
-        generarRutaGPS: true
-      }));
-      // Recargar datos después de crear
-      await loadData();
-    } catch (error) {
-      console.error('[CLIENTES SCREEN] ❌ Error creando datos de prueba:', error);
-    }
-  };
 
   const filtros: { label: FiltroEstado; count: number; color: string }[] = [
     { label: 'Pendientes', count: clientes.reduce((sum, c) => sum + c.entregas.length, 0), color: colors.warning[500] },
@@ -154,35 +130,9 @@ const ClientesEntregasScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+  <View style={styles.container}>
       <View style={styles.header}>
         <Typography variant="h5">Clientes - Entregas</Typography>
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            onPress={loadTestData}
-            style={[styles.debugButton, { marginRight: spacing[2] }]}
-          >
-            <Ionicons name="flask-outline" size={20} color={colors.secondary[600]} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('TestApiTransformation')}
-            style={[styles.debugButton, { marginRight: spacing[2] }]}
-          >
-            <Ionicons name="code-working-outline" size={18} color={colors.info[600]} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('DebugApi')}
-            style={styles.debugButton}
-          >
-            <Ionicons name="bug-outline" size={20} color={colors.primary[600]} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('SimulacionEntrega')}
-            style={[styles.debugButton, { backgroundColor: colors.secondary[50] }]}
-          >
-            <Ionicons name="car-outline" size={20} color={colors.secondary[600]} />
-          </TouchableOpacity>
-        </View>
       </View>
 
       <View style={styles.estadisticasContainer}>
@@ -202,7 +152,7 @@ const ClientesEntregasScreen: React.FC = () => {
       </View>
 
       <FlatList
-        data={clientes}
+  data={clientes}
         renderItem={renderCliente}
         keyExtractor={(item, index) => `${item.carga}-${item.cuentaCliente}-${index}`}
         contentContainerStyle={styles.listContent}
@@ -214,51 +164,8 @@ const ClientesEntregasScreen: React.FC = () => {
               No hay clientes con entregas
             </Typography>
             <Typography variant="body2" color="secondary" align="center" style={styles.emptyDescription}>
-              El endpoint /Mobile/entregas devuelve array vacío
+              Usa la pantalla "Testing" para generar datos mock
             </Typography>
-            <Typography variant="caption" color="secondary" align="center" style={styles.emptyHint}>
-              Cambios del backend:
-              {'\n'}• EstatusEmbarqueId = 4 (En ruta)
-              {'\n'}• EsTestData = false para datos de prueba
-              {'\n'}• Procesamiento uniforme de embarques
-              {'\n'}• Usuario: alfredo.gallegos
-            </Typography>
-            <Button
-              variant="primary"
-              size="small"
-              onPress={() => navigation.navigate('DebugApi')}
-              style={styles.debugTestButton}
-              leftIcon={<Ionicons name="bug-outline" size={16} color={colors.white} />}
-            >
-              Probar API
-            </Button>
-            <Button
-              variant="ghost"
-              size="small"
-              onPress={() => navigation.navigate('SimulacionEntrega')}
-              style={styles.debugTestButton}
-              leftIcon={<Ionicons name="car-outline" size={16} color={colors.secondary[600]} />}
-            >
-              🚚 Simulación de Entregas
-            </Button>
-            <Button
-              variant="secondary"
-              size="small"
-              onPress={crearNuevosDatosPrueba}
-              style={styles.debugTestButton}
-              leftIcon={<Ionicons name="add-outline" size={16} color={colors.secondary[600]} />}
-            >
-              Crear Nuevos Datos
-            </Button>
-            <Button
-              variant="ghost"
-              size="small"
-              onPress={loadTestData}
-              style={styles.debugTestButton}
-              leftIcon={<Ionicons name="flask-outline" size={16} color={colors.neutral[600]} />}
-            >
-              Cargar Datos Existentes
-            </Button>
           </View>
         }
       />
@@ -279,14 +186,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderBottomWidth: 1,
     borderBottomColor: colors.border.light,
-  },
-  debugButton: {
-    padding: spacing[2],
-    borderRadius: borderRadius.md,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   estadisticasContainer: {
     flexDirection: 'row',
@@ -361,13 +260,6 @@ const styles = StyleSheet.create({
   },
   emptyDescription: {
     marginBottom: spacing[2],
-  },
-  emptyHint: {
-    marginBottom: spacing[4],
-    lineHeight: 16,
-  },
-  debugTestButton: {
-    marginTop: spacing[2],
   },
 });
 

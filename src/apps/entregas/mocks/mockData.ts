@@ -233,3 +233,223 @@ export const mockRouteCoordinates = [
   mockDirecciones[3].coordenadas,
   mockDirecciones[4].coordenadas,
 ];
+
+// Mock data para EmbarquesEntrega (nuevo sistema)
+import { ClienteEntregaDTO, ArticuloEntregaDTO } from '../models/types';
+
+export const mockArticulosCliente1: ArticuloEntregaDTO[] = [
+  {
+    id: 1,
+    nombreCarga: 'CARGA-001',
+    nombreOrdenVenta: 'OV-2025-001',
+    producto: 'Harina de Trigo Premium',
+    cantidadProgramada: 100,
+    cantidadEntregada: 0,
+    restante: 100,
+    peso: 2500,
+    unidadMedida: 'KG',
+    descripcion: 'Harina de trigo para panificación',
+  },
+  {
+    id: 2,
+    nombreCarga: 'CARGA-001',
+    nombreOrdenVenta: 'OV-2025-001',
+    producto: 'Aceite Vegetal',
+    cantidadProgramada: 50,
+    cantidadEntregada: 0,
+    restante: 50,
+    peso: 250,
+    unidadMedida: 'L',
+    descripcion: 'Aceite de girasol refinado',
+  },
+];
+
+export const mockArticulosCliente2: ArticuloEntregaDTO[] = [
+  {
+    id: 3,
+    nombreCarga: 'CARGA-002',
+    nombreOrdenVenta: 'OV-2025-002',
+    producto: 'Arroz Blanco',
+    cantidadProgramada: 200,
+    cantidadEntregada: 0,
+    restante: 200,
+    peso: 4000,
+    unidadMedida: 'KG',
+    descripcion: 'Arroz grado extra',
+  },
+  {
+    id: 4,
+    nombreCarga: 'CARGA-002',
+    nombreOrdenVenta: 'OV-2025-002',
+    producto: 'Frijol Negro',
+    cantidadProgramada: 80,
+    cantidadEntregada: 0,
+    restante: 80,
+    peso: 800,
+    unidadMedida: 'KG',
+    descripcion: 'Frijol negro selecto',
+  },
+];
+
+export const mockArticulosCliente3: ArticuloEntregaDTO[] = [
+  {
+    id: 5,
+    nombreCarga: 'CARGA-003',
+    nombreOrdenVenta: 'OV-2025-003',
+    producto: 'Paracetamol 500mg',
+    cantidadProgramada: 100,
+    cantidadEntregada: 0,
+    restante: 100,
+    peso: 50,
+    unidadMedida: 'CAJAS',
+    descripcion: 'Tabletas 500mg',
+  },
+  {
+    id: 6,
+    nombreCarga: 'CARGA-003',
+    nombreOrdenVenta: 'OV-2025-003',
+    producto: 'Ibuprofeno 400mg',
+    cantidadProgramada: 75,
+    cantidadEntregada: 0,
+    restante: 75,
+    peso: 40,
+    unidadMedida: 'CAJAS',
+    descripcion: 'Tabletas 400mg',
+  },
+];
+
+export const mockArticulosCliente4: ArticuloEntregaDTO[] = [
+  {
+    id: 7,
+    nombreCarga: 'CARGA-004',
+    nombreOrdenVenta: 'OV-2025-004',
+    producto: 'Pan Integral',
+    cantidadProgramada: 120,
+    cantidadEntregada: 0,
+    restante: 120,
+    peso: 60,
+    unidadMedida: 'PIEZAS',
+    descripcion: 'Pan integral artesanal',
+  },
+];
+
+export const mockArticulosCliente5: ArticuloEntregaDTO[] = [
+  {
+    id: 8,
+    nombreCarga: 'CARGA-005',
+    nombreOrdenVenta: 'OV-2025-005',
+    producto: 'Tornillos 1/2 pulgada',
+    cantidadProgramada: 500,
+    cantidadEntregada: 0,
+    restante: 500,
+    peso: 100,
+    unidadMedida: 'PIEZAS',
+    descripcion: 'Tornillos acero inoxidable',
+  },
+  {
+    id: 9,
+    nombreCarga: 'CARGA-005',
+    nombreOrdenVenta: 'OV-2025-005',
+    producto: 'Pintura Blanca',
+    cantidadProgramada: 20,
+    cantidadEntregada: 0,
+    restante: 20,
+    peso: 80,
+    unidadMedida: 'L',
+    descripcion: 'Pintura vinílica blanca',
+  },
+];
+
+// Asegurar que cada cliente tenga una clave única
+export const mockClientesEntrega: ClienteEntregaDTO[] = [
+  {
+    cliente: 'Restaurante El Buen Sabor',
+    cuentaCliente: 'CLI-001',
+    carga: 'CARGA-001',
+    direccionEntrega: 'Av. Insurgentes Sur 1602, Col. Crédito Constructor, CDMX',
+    latitud: '19.3687',
+    longitud: '-99.1710',
+    entregas: [
+      {
+        ordenVenta: 'OV-2025-001',
+        folio: 'FOL-001',
+        tipoEntrega: 'ENTREGA',
+        estado: 'PENDIENTE',
+        articulos: mockArticulosCliente1,
+        cargaCuentaCliente: 'CARGA-001-CLI-001',
+      },
+    ],
+  },
+  {
+    cliente: 'Supermercado La Esquina',
+    cuentaCliente: 'CLI-002',
+    carga: 'CARGA-002',
+    direccionEntrega: 'Av. Revolución 1234, Col. San Ángel, CDMX',
+    latitud: '19.3476',
+    longitud: '-99.1877',
+    entregas: [
+      {
+        ordenVenta: 'OV-2025-002',
+        folio: 'FOL-002',
+        tipoEntrega: 'ENTREGA',
+        estado: 'PENDIENTE',
+        articulos: mockArticulosCliente2,
+        cargaCuentaCliente: 'CARGA-002-CLI-002',
+      },
+    ],
+  },
+  {
+    cliente: 'Farmacia San José',
+    cuentaCliente: 'CLI-003',
+    carga: 'CARGA-003',
+    direccionEntrega: 'Calle Madero 45, Col. Centro, CDMX',
+    latitud: '19.4326',
+    longitud: '-99.1332',
+    entregas: [
+      {
+        ordenVenta: 'OV-2025-003',
+        folio: 'FOL-003',
+        tipoEntrega: 'ENTREGA',
+        estado: 'PENDIENTE',
+        articulos: mockArticulosCliente3,
+        cargaCuentaCliente: 'CARGA-003-CLI-003',
+      },
+    ],
+  },
+  {
+    cliente: 'Panadería Dulce Aroma',
+    cuentaCliente: 'CLI-004',
+    carga: 'CARGA-004',
+    direccionEntrega: 'Av. Chapultepec 567, Col. Roma Norte, CDMX',
+    latitud: '19.4150',
+    longitud: '-99.1620',
+    entregas: [
+      {
+        ordenVenta: 'OV-2025-004',
+        folio: 'FOL-004',
+        tipoEntrega: 'ENTREGA',
+        estado: 'PENDIENTE',
+        articulos: mockArticulosCliente4,
+        cargaCuentaCliente: 'CARGA-004-CLI-004',
+      },
+    ],
+  },
+  {
+    cliente: 'Ferretería El Tornillo',
+    cuentaCliente: 'CLI-005',
+    carga: 'CARGA-005',
+    direccionEntrega: 'Calle Amsterdam 89, Col. Condesa, CDMX',
+    latitud: '19.4110',
+    longitud: '-99.1710',
+    entregas: [
+      {
+        ordenVenta: 'OV-2025-005',
+        folio: 'FOL-005',
+        tipoEntrega: 'ENTREGA',
+        estado: 'PENDIENTE',
+        articulos: mockArticulosCliente5,
+        cargaCuentaCliente: 'CARGA-005-CLI-005',
+      },
+    ],
+  },
+];

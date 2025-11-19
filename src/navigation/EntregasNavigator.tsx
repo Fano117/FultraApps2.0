@@ -8,10 +8,7 @@ import FormularioEntregaScreen from '@/apps/entregas/screens/FormularioEntregaSc
 import EntregasListScreen from '@/apps/entregas/screens/EntregasListScreen';
 import EntregaDetailScreen from '@/apps/entregas/screens/EntregaDetailScreen';
 import EntregaTrackingScreen from '@/screens/EntregaTrackingScreen';
-import DebugApiScreen from '@/apps/entregas/screens/DebugApiScreen';
-import { TestApiTransformationScreen } from '@/apps/entregas/screens/TestApiTransformationScreen';
 import { DeliveryMapScreen } from '@/apps/entregas/screens/DeliveryMapScreen';
-import { SimulacionEntregaScreen } from '@/apps/entregas/screens/SimulacionEntregaScreen';
 import { GestionEntregasScreen } from '@/apps/entregas/screens/GestionEntregasScreen';
 import { EstadoEntregaScreen } from '@/apps/entregas/screens/EstadoEntregaScreen';
 import RutaEntregaScreen from '@/apps/entregas/screens/RutaEntregaScreen';
@@ -54,21 +51,6 @@ const EntregasNavigator: React.FC = () => {
         name="EntregaDetail"
         component={EntregaDetailScreen}
         options={{ title: 'Detalle de Entrega', headerShown: true }}
-      />
-      <Stack.Screen
-        name="DebugApi"
-        component={DebugApiScreen}
-        options={{ title: 'API Debug', headerShown: true }}
-      />
-      <Stack.Screen
-        name="TestApiTransformation"
-        component={TestApiTransformationScreen}
-        options={{ title: 'Test API Transformation', headerShown: true }}
-      />
-      <Stack.Screen
-        name="SimulacionEntrega"
-        component={SimulacionEntregaScreen}
-        options={{ title: 'Simulación de Entregas', headerShown: false }}
       />
       <Stack.Screen
         name="GestionEntregas"

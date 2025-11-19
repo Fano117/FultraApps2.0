@@ -10,7 +10,9 @@
       "Bash(npx tsc:*)",
       "Bash(npm run android:*)",
       "Bash(curl:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(npm config set:*)",
+      "Bash(npm list:*)"
     ],
     "deny": [],
     "ask": []

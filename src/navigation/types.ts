@@ -12,7 +12,6 @@ export type MainTabParamList = {
   Profile: undefined;
   Notifications: undefined;
   TestData: undefined;
-  TestFunctions: undefined;
 };
 
 export type EntregasTabParamList = {
@@ -40,9 +39,6 @@ export type EntregasStackParamList = {
     ordenVenta: string;
     geofenceId?: string;
   };
-  DebugApi: undefined;
-  TestApiTransformation: undefined;
-  SimulacionEntrega: undefined;
   GestionEntregas: undefined;
   EstadoEntrega: { geofenceId: string };
 };
