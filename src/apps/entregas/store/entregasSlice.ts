@@ -1,7 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { ClienteEntregaDTO, EntregaSync, EstadoSincronizacion } from '../models';
-import { entregasStorageService, entregasApiService, mobileApiService } from '../services';
-import { testEntregasApiService } from '../services/testEntregasApiService';
+import { entregasStorageService, mobileApiService } from '../services';
 
 interface EntregasState {
   clientes: ClienteEntregaDTO[];
@@ -23,39 +22,25 @@ export const fetchEmbarques = createAsyncThunk(
   'entregas/fetchEmbarques',
   async (_, { rejectWithValue }) => {
     try {
-      // Usar el nuevo endpoint móvil
-      console.log('[STORE] 📱 Usando nuevo endpoint móvil /Mobile/entregas');
-      const clientes = await mobileApiService.getEntregas();
-      await entregasStorageService.updateClientesEntrega(clientes);
+      // Usar solo datos locales (mock) sin llamar a la API
+      console.log('[STORE] 📦 Cargando datos mock desde almacenamiento local');
+      const clientes = await entregasStorageService.getClientesEntrega();
+      
+      if (clientes.length === 0) {
+        console.log('[STORE] ℹ️ No hay datos mock. Usa la pantalla "Testing" para generar datos.');
+      } else {
+        console.log(`[STORE] ✅ ${clientes.length} clientes cargados desde almacenamiento local`);
+      }
+      
       return clientes;
     } catch (error: any) {
-      console.error('[STORE] ❌ Error con endpoint móvil, intentando fallback:', error);
-      try {
-        // Fallback al método legacy
-        console.log('[STORE] 🔄 Fallback al método legacy');
-        const clientes = await entregasApiService.fetchEntregasMoviles();
-        await entregasStorageService.updateClientesEntrega(clientes);
-        return clientes;
-      } catch (fallbackError: any) {
-        console.error('[STORE] ❌ Error en fallback:', fallbackError);
-        return rejectWithValue(fallbackError.message || 'Error al cargar embarques');
-      }
+      console.error('[STORE] ❌ Error cargando datos locales:', error);
+      return rejectWithValue(error.message || 'Error al cargar datos locales');
     }
   }
 );
 
-export const fetchEmbarquesWithTestData = createAsyncThunk(
-  'entregas/fetchEmbarquesWithTestData',
-  async (_, { rejectWithValue }) => {
-    try {
-      const clientes = await testEntregasApiService.fetchEntregasConFallback();
-      await entregasStorageService.updateClientesEntrega(clientes);
-      return clientes;
-    } catch (error: any) {
-      return rejectWithValue(error.message || 'Error al cargar embarques con datos de prueba');
-    }
-  }
-);
+
 
 export const loadLocalData = createAsyncThunk(
   'entregas/loadLocalData',
@@ -115,19 +100,7 @@ export const confirmarEntrega = createAsyncThunk(
   }
 );
 
-export const crearDatosPrueba = createAsyncThunk(
-  'entregas/crearDatosPrueba',
-  async (config: { cantidadClientes?: number; cantidadEntregas?: number; generarRutaGPS?: boolean } = {}, { rejectWithValue }) => {
-    try {
-      console.log('[STORE] 🧪 Creando datos de prueba...');
-      const result = await mobileApiService.crearDatosPrueba(config);
-      return result;
-    } catch (error: any) {
-      console.error('[STORE] ❌ Error creando datos de prueba:', error);
-      return rejectWithValue(error.message || 'Error al crear datos de prueba');
-    }
-  }
-);
+
 
 const entregasSlice = createSlice({
   name: 'entregas',
@@ -158,19 +131,6 @@ const entregasSlice = createSlice({
         state.lastSync = Date.now();
       })
       .addCase(fetchEmbarques.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      })
-      .addCase(fetchEmbarquesWithTestData.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchEmbarquesWithTestData.fulfilled, (state, action) => {
-        state.loading = false;
-        state.clientes = action.payload;
-        state.lastSync = Date.now();
-      })
-      .addCase(fetchEmbarquesWithTestData.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       })
