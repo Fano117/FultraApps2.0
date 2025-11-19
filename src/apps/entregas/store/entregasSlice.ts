@@ -180,18 +180,6 @@ const entregasSlice = createSlice({
       .addCase(confirmarEntrega.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
-      })
-      .addCase(crearDatosPrueba.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(crearDatosPrueba.fulfilled, (state) => {
-        state.loading = false;
-        // Los datos se recargarán con la siguiente llamada a fetch
-      })
-      .addCase(crearDatosPrueba.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
       });
   },
 });
