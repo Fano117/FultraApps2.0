@@ -46,6 +46,14 @@ const OrdenesVentaScreen: React.FC = () => {
     const totalCantidad = item.articulos.reduce((sum, art) => sum + art.cantidadProgramada, 0);
     const pesoTotal = item.articulos.reduce((sum, art) => sum + art.peso, 0);
 
+    // Verificar si la entrega ya fue procesada
+    const yaEntregado = [
+      EstadoEntrega.ENTREGADO_COMPLETO,
+      EstadoEntrega.ENTREGADO_PARCIAL,
+      EstadoEntrega.NO_ENTREGADO,
+      EstadoEntrega.PENDIENTE_ENVIO,
+    ].includes(item.estado as EstadoEntrega);
+
     return (
       <Card variant="elevated" padding="none" style={styles.ordenCard}>
         <View style={styles.ordenHeader}>
@@ -101,17 +109,19 @@ const OrdenesVentaScreen: React.FC = () => {
           )}
         </View>
 
-        <View style={styles.ordenActions}>
-          <Button
-            variant="gradient"
-            size="medium"
-            fullWidth
-            onPress={() => handleOrdenPress(item)}
-            leftIcon={<Ionicons name="checkmark-circle-outline" size={20} color={colors.white} />}
-          >
-            Realizar Entrega
-          </Button>
-        </View>
+        {!yaEntregado && (
+          <View style={styles.ordenActions}>
+            <Button
+              variant="gradient"
+              size="medium"
+              fullWidth
+              onPress={() => handleOrdenPress(item)}
+              leftIcon={<Ionicons name="checkmark-circle-outline" size={20} color={colors.white} />}
+            >
+              Realizar Entrega
+            </Button>
+          </View>
+        )}
       </Card>
     );
   };
@@ -188,7 +198,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   clienteInfo: {
-    margin: spacing[4],
+    marginHorizontal: spacing[4],
+    marginTop: spacing[2],
+    marginBottom: spacing[2],
     gap: spacing[2],
   },
   clienteRow: {
@@ -201,7 +213,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: spacing[4],
-    paddingTop: 0,
+    paddingTop: spacing[2],
     paddingBottom: spacing[10],
   },
   ordenCard: {

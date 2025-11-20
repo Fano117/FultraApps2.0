@@ -450,7 +450,7 @@ const EntregaDetailScreen: React.FC = () => {
 
         <View style={styles.footer}>
           <Button variant="gradient" size="large" fullWidth onPress={handleSave} loading={saving}>
-            Guardar Entrega
+            Enviar Entrega
           </Button>
         </View>
       </ScrollView>

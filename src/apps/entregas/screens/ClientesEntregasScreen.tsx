@@ -6,6 +6,7 @@ import {
   FlatList,
   RefreshControl,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -16,6 +17,7 @@ import { fetchEmbarques, loadLocalData } from '../store/entregasSlice';
 import { ClienteEntregaDTO } from '../models';
 import { EntregasStackParamList } from '@/navigation/types';
 import { HereNotificationsMockService } from '@/shared/services/hereNotificationsMockService';
+import { syncService } from '../services/syncService';
 
 type NavigationProp = NativeStackNavigationProp<EntregasStackParamList, 'ClientesEntregas'>;
 
@@ -67,21 +69,109 @@ const ClientesEntregasScreen: React.FC = () => {
       }
     } catch (error) {
       console.error('[CLIENTES SCREEN] ❌ Error cargando datos:', error);
+    loadData(false); // No mostrar alerta en carga inicial
+
+    // Activar listener de conectividad para sincronización automática
+    syncService.startConnectivityListener(() => {
+      // Callback cuando se completa una sincronización automática
+      dispatch(loadLocalData());
+    });
+
+    return () => {
+      // Limpiar listener al salir del módulo
+      syncService.stopConnectivityListener();
+    };
+  }, []);
+
+  const loadData = async (showAlert: boolean = true) => {
+    await dispatch(loadLocalData());
+
+    try {
+      const result = await dispatch(fetchEmbarques()).unwrap();
+
+      if (showAlert) {
+        const totalOrdenes = result.reduce((sum, c) => sum + c.entregas.length, 0);
+        Alert.alert(
+          'Lista Actualizada',
+          `Se cargaron ${result.length} cliente(s) con ${totalOrdenes} orden(es) de venta.`
+        );
+      }
+    } catch (error: any) {
+      if (showAlert) {
+        Alert.alert(
+          'Error al Actualizar',
+          error || 'No se pudo conectar con el servidor. Se muestran los datos locales.'
+        );
+      }
     }
   };
 
   const filtros: { label: FiltroEstado; count: number; color: string }[] = [
-    { label: 'Pendientes', count: clientes.reduce((sum, c) => sum + c.entregas.length, 0), color: colors.warning[500] },
+    {
+      label: 'Pendientes',
+      count: clientes.reduce((sum, c) =>
+        sum + c.entregas.filter(e => e.estado === 'PENDIENTE').length, 0
+      ),
+      color: colors.warning[500]
+    },
     { label: 'Pend. Envío', count: entregasSync.length, color: colors.error[500] },
-    { label: 'Entregadas', count: 0, color: colors.success[500] },
-    { label: 'Enviadas', count: 0, color: colors.neutral[400] },
-    { label: 'No Entregadas', count: 0, color: colors.secondary[500] },
+    {
+      label: 'Entregadas',
+      count: clientes.reduce((sum, c) =>
+        sum + c.entregas.filter(e =>
+          e.estado === 'ENTREGADO_COMPLETO' || e.estado === 'ENTREGADO_PARCIAL'
+        ).length, 0
+      ),
+      color: colors.success[500]
+    },
+    {
+      label: 'Enviadas',
+      count: clientes.reduce((sum, c) =>
+        sum + c.entregas.filter(e => e.estado === 'ENVIADO').length, 0
+      ),
+      color: colors.neutral[400]
+    },
+    {
+      label: 'No Entregadas',
+      count: clientes.reduce((sum, c) =>
+        sum + c.entregas.filter(e => e.estado === 'NO_ENTREGADO').length, 0
+      ),
+      color: colors.secondary[500]
+    },
     { label: 'Todos', count: clientes.reduce((sum, c) => sum + c.entregas.length, 0), color: colors.primary[500] },
   ];
 
   const handleClientePress = async (cliente: ClienteEntregaDTO) => {
     await HereNotificationsMockService.simulateEntregaEvent('inicio', cliente.cliente);
     navigation.navigate('OrdenesVenta', { cliente });
+  };
+
+  const getClientesFiltrados = (): ClienteEntregaDTO[] => {
+    if (filtroActivo === 'Todos') {
+      return clientes;
+    }
+
+    return clientes
+      .map(cliente => ({
+        ...cliente,
+        entregas: cliente.entregas.filter(entrega => {
+          switch (filtroActivo) {
+            case 'Pendientes':
+              return entrega.estado === 'PENDIENTE';
+            case 'Pend. Envío':
+              return entrega.estado === 'PENDIENTE_ENVIO';
+            case 'Entregadas':
+              return entrega.estado === 'ENTREGADO_COMPLETO' || entrega.estado === 'ENTREGADO_PARCIAL';
+            case 'Enviadas':
+              return entrega.estado === 'ENVIADO';
+            case 'No Entregadas':
+              return entrega.estado === 'NO_ENTREGADO';
+            default:
+              return true;
+          }
+        })
+      }))
+      .filter(cliente => cliente.entregas.length > 0);
   };
 
   const renderEstadistica = (titulo: string, valor: number, color: string) => (
@@ -181,8 +271,8 @@ const ClientesEntregasScreen: React.FC = () => {
 
       <View style={styles.estadisticasContainer}>
         {renderEstadistica('Total OV', clientes.reduce((sum, c) => sum + c.entregas.length, 0), colors.primary[600])}
-        {renderEstadistica('Pendientes', clientes.reduce((sum, c) => sum + c.entregas.length, 0), colors.warning[600])}
-        {renderEstadistica('Entregados', 0, colors.success[600])}
+        {renderEstadistica('Pendientes', clientes.reduce((sum, c) => sum + c.entregas.filter(e => e.estado === 'PENDIENTE').length, 0), colors.warning[600])}
+        {renderEstadistica('Entregados', clientes.reduce((sum, c) => sum + c.entregas.filter(e => e.estado === 'ENTREGADO_COMPLETO' || e.estado === 'ENTREGADO_PARCIAL').length, 0), colors.success[600])}
         {renderEstadistica('Pendientes Envío', entregasSync.length, colors.error[600])}
       </View>
 
@@ -197,6 +287,7 @@ const ClientesEntregasScreen: React.FC = () => {
 
       <FlatList
   data={clientes}
+        data={getClientesFiltrados()}
         renderItem={renderCliente}
         keyExtractor={(item, index) => `${item.carga}-${item.cuentaCliente}-${index}`}
         contentContainerStyle={styles.listContent}
@@ -243,6 +334,8 @@ const styles = StyleSheet.create({
   },
   filtrosSection: {
     padding: spacing[4],
+    paddingTop: spacing[2],
+    paddingBottom: spacing[3],
     backgroundColor: colors.white,
     marginBottom: spacing[2],
   },
@@ -265,6 +358,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: spacing[4],
+    paddingTop: spacing[2],
     paddingBottom: spacing[10],
   },
   clienteCard: {

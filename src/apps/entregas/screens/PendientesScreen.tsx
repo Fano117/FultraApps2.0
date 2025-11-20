@@ -22,6 +22,17 @@ const PendientesScreen: React.FC = () => {
 
   useEffect(() => {
     cargarDatos();
+
+    // Activar listener de conectividad para sincronización automática
+    syncService.startConnectivityListener(() => {
+      // Callback cuando se completa una sincronización automática
+      cargarDatos();
+    });
+
+    return () => {
+      // Limpiar listener al salir de la pantalla
+      syncService.stopConnectivityListener();
+    };
   }, []);
 
   const cargarDatos = async () => {
@@ -37,11 +48,32 @@ const PendientesScreen: React.FC = () => {
     try {
       const result = await syncService.sincronizarEntregasPendientes();
 
+      await cargarDatos();
+
       if (result.success) {
-        Alert.alert('Éxito', result.mensaje || 'Todas las entregas se sincronizaron correctamente');
-        await cargarDatos();
+        if (result.entregasSincronizadas === 0 && result.entregasConError === 0) {
+          Alert.alert('Información', 'No hay entregas pendientes de sincronizar');
+        } else if (result.entregasConError === 0) {
+          Alert.alert(
+            'Éxito',
+            `Se sincronizaron ${result.entregasSincronizadas} entrega(s) correctamente`
+          );
+        } else if (result.entregasSincronizadas > 0) {
+          Alert.alert(
+            'Sincronización Parcial',
+            `Se sincronizaron ${result.entregasSincronizadas} entrega(s), pero ${result.entregasConError} tuvieron errores y se reintentarán automáticamente.`
+          );
+        } else {
+          Alert.alert(
+            'Error de Sincronización',
+            `No se pudieron sincronizar ${result.entregasConError} entrega(s). Se reintentará automáticamente cuando haya mejor conexión.`
+          );
+        }
       } else {
-        Alert.alert('Información', result.mensaje || 'No se pudieron sincronizar las entregas');
+        Alert.alert(
+          'Sin Conexión',
+          result.mensaje || 'No hay conexión a internet. Las entregas se sincronizarán automáticamente cuando se restaure la conexión.'
+        );
       }
     } catch (error) {
       console.error('[Pendientes] Error sincronizando:', error);

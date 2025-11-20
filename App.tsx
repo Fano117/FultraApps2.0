@@ -9,8 +9,11 @@ import { ActivityIndicator, View, StyleSheet, Text } from 'react-native';
 import { store, persistor } from './src/shared/store';
 import { RootNavigator } from './src/navigation';
 import { colors } from './src/design-system';
+import { useAppUpdate } from './src/shared/hooks';
 
 export default function App() {
+  // Verificar actualizaciones automáticamente (Android + iOS)
+  useAppUpdate();
   // Temporalmente deshabilitado para debugging
   // useEffect(() => {
   //   const setupBackgroundSync = async () => {

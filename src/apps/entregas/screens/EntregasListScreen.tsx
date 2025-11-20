@@ -255,6 +255,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: spacing[4],
+    paddingTop: spacing[2],
     paddingBottom: spacing[10],
   },
   clienteContainer: {

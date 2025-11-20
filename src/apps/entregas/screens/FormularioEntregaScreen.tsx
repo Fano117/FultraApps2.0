@@ -409,7 +409,7 @@ const FormularioEntregaScreen: React.FC = () => {
       await dispatch(loadLocalData());
 
       if (result.success) {
-        Alert.alert('Éxito', 'La entrega se registró correctamente', [
+        Alert.alert('Entrega Enviada', 'La entrega y las imágenes se enviaron exitosamente al servidor', [
           {
             text: 'OK',
             onPress: () => {
@@ -422,8 +422,8 @@ const FormularioEntregaScreen: React.FC = () => {
         ]);
       } else {
         Alert.alert(
-          'Guardado localmente',
-          result.mensaje || 'La entrega se guardó localmente y se sincronizará cuando haya conexión',
+          'Sin Conexión',
+          result.mensaje || 'La entrega se guardó localmente y se sincronizará automáticamente cuando haya conexión a internet',
           [
             {
               text: 'OK',
@@ -685,6 +685,7 @@ const FormularioEntregaScreen: React.FC = () => {
           disabled={loading || !ubicacion}
         >
           {tipoRegistro === TipoRegistro.NO_ENTREGADO ? 'Registrar No Entregado' : 'Guardar Entrega'}
+          Enviar Entrega
         </Button>
       </View>
     </SafeAreaView>
@@ -716,6 +717,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: spacing[4],
+    paddingTop: spacing[2],
     paddingBottom: spacing[20],
   },
   section: {
