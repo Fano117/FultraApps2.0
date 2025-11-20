@@ -1,3 +1,13 @@
+// Datos específicos para Monterrey
+const CALLES_MONTERREY = [
+  'Av. Constitución', 'Av. Morones Prieto', 'Av. Eugenio Garza Sada', 'Av. Gonzalitos',
+  'Av. Universidad', 'Av. Madero', 'Av. Lincoln', 'Av. Revolución', 'Av. Lázaro Cárdenas',
+  'Av. Juárez', 'Av. Pablo Livas', 'Av. Rómulo Garza', 'Av. Fundidora', 'Av. San Pedro', 'Av. Sendero'
+];
+const COLONIAS_MONTERREY = [
+  'Obispado', 'Cumbres', 'San Jerónimo', 'Mitras Centro', 'Valle Oriente', 'Centro', 'Linda Vista',
+  'Contry', 'Tecnológico', 'Del Valle', 'Roma', 'Anáhuac', 'San Pedro', 'Santa Catarina', 'San Nicolás'
+];
 /**
  * Generador de datos de prueba realistas para FultraTrack
  */
@@ -121,6 +131,50 @@ const PRODUCTOS_COMUNES = [
 ];
 
 class TestDataGenerator {
+  /**
+   * Generar teléfono aleatorio para Monterrey (formato mexicano)
+   */
+  private generatePhoneMonterrey(): string {
+    const area = '81';
+    const number = Math.floor(Math.random() * 90000000) + 10000000;
+    return `${area}${number}`;
+  }
+
+  /**
+   * Generar coordenadas aleatorias en Monterrey
+   */
+  private generateCoordinatesMonterrey(): { latitud: number; longitud: number } {
+    const baseLat = 25.6866;
+    const baseLon = -100.3161;
+    const latOffset = (Math.random() - 0.5) * 0.18;
+    const lonOffset = (Math.random() - 0.5) * 0.18;
+    return { latitud: baseLat + latOffset, longitud: baseLon + lonOffset };
+  }
+
+  /**
+   * Generar cliente de prueba específico para Monterrey
+   */
+  generateClienteMonterrey(index: number): ClienteTest {
+    const nombreEmpresa = NOMBRES_EMPRESAS[index % NOMBRES_EMPRESAS.length];
+    const calle = CALLES_MONTERREY[Math.floor(Math.random() * CALLES_MONTERREY.length)];
+    const colonia = COLONIAS_MONTERREY[Math.floor(Math.random() * COLONIAS_MONTERREY.length)];
+    const coords = this.generateCoordinatesMonterrey();
+    return {
+      nombre: `${nombreEmpresa} TEST MTY ${index + 1}`,
+      rfc: this.generateRFC(),
+      telefono: this.generatePhoneMonterrey(),
+      email: `contacto${index + 1}@${nombreEmpresa.toLowerCase().replace(/\s/g, '')}.com`,
+      direccion: {
+        calle,
+        numero: String(Math.floor(Math.random() * 9000) + 1000),
+        colonia,
+        ciudad: 'Monterrey',
+        estado: 'Nuevo León',
+        codigoPostal: String(64000 + Math.floor(Math.random() * 900)),
+        coordenadas: coords,
+      },
+    };
+  }
   /**
    * Generar RFC aleatorio válido
    */
@@ -434,16 +488,27 @@ class TestDataGenerator {
     const entregas: EntregaTest[] = [];
     const rutas: RutaGPSTest[] = [];
 
-    // Generar clientes
-    for (let i = 0; i < config.numClientes; i++) {
-      const cliente = this.generateCliente(i);
-      clientes.push(cliente);
+    let ciudad = 'Guadalajara';
+    let clienteGen = (i: number) => this.generateCliente(i);
+    let almacen = { latitud: 20.6597, longitud: -103.3496 };
 
-      // Generar entregas para este cliente
+    if ((config as any).ubicacion === 'Monterrey') {
+      ciudad = 'Monterrey';
+      clienteGen = (i: number) => this.generateClienteMonterrey(i);
+      almacen = { latitud: 25.6866, longitud: -100.3161 };
+    }
+    if ((config as any).ubicacion === 'Zacatecas') {
+      ciudad = 'Zacatecas';
+      clienteGen = (i: number) => this.generateClienteZacatecas(i);
+      almacen = { latitud: 22.7709, longitud: -102.5832 };
+    }
+
+    for (let i = 0; i < config.numClientes; i++) {
+      const cliente = clienteGen(i);
+      clientes.push(cliente);
       for (let j = 0; j < config.numEntregasPorCliente; j++) {
         const fecha = new Date(config.fechaInicio);
-        fecha.setDate(fecha.getDate() + Math.floor(Math.random() * 7)); // Siguiente semana
-
+        fecha.setDate(fecha.getDate() + Math.floor(Math.random() * 7));
         const entrega = this.generateEntrega(
           cliente,
           fecha,
@@ -453,13 +518,10 @@ class TestDataGenerator {
       }
     }
 
-    // Generar ruta GPS si se solicita
     if (config.generarRutaGPS) {
-      const almacen = { latitud: 20.6597, longitud: -103.3496 }; // Centro GDL
       const destinos = entregas
         .slice(0, Math.min(10, entregas.length))
         .map((e) => e.cliente.direccion.coordenadas);
-
       const ruta = this.generateRutaGPS(almacen, destinos);
       rutas.push(ruta);
     }

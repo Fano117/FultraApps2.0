@@ -13,6 +13,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Card, Typography, Badge, colors, spacing, borderRadius } from '@/design-system';
 import { EntregasStackParamList } from '@/navigation/types';
 import { TipoRegistro } from '../models';
+import { HereNotificationsMockService } from '@/shared/services/hereNotificationsMockService';
 import { entregasStorageService } from '../services/storageService';
 import { geofencingService } from '@/shared/services/geofencingService';
 import { locationTrackingService } from '@/shared/services/locationTrackingService';
@@ -109,8 +110,8 @@ const DetalleOrdenScreen: React.FC = () => {
   }, [geofenceId]);
 
   const handleTipoEntregaSelect = async (tipo: TipoRegistro) => {
-    // Validar que esté dentro del geofence antes de permitir la selección
-    if (!dentroGeofence) {
+    // Permitir seleccionar 'No Entregado' aunque esté fuera del área de entrega
+    if (!dentroGeofence && tipo !== TipoRegistro.NO_ENTREGADO) {
       Alert.alert(
         '🚫 Fuera del Área de Entrega',
         `Debe estar dentro del radio de 50m para realizar la entrega.\n\nDistancia actual: ${distanciaDestino ? Math.round(distanciaDestino) : 'N/A'}m\n\nPor favor, acérquese al punto de entrega.`,
@@ -136,9 +137,14 @@ const DetalleOrdenScreen: React.FC = () => {
     }
 
     setSelectedTipo(tipo);
-    
-    // Iniciar tracking GPS y geofencing cuando se selecciona un tipo
-    if (!trackingIniciado) {
+
+    // Notificación: inicio de entrega
+    if (tipo === TipoRegistro.COMPLETO || tipo === TipoRegistro.PARCIAL) {
+      await HereNotificationsMockService.simulateEntregaEvent('inicio', cliente.cliente);
+    }
+
+    // Solo iniciar tracking y geofencing si no es 'No Entregado'
+    if (!trackingIniciado && tipo !== TipoRegistro.NO_ENTREGADO) {
       await iniciarTrackingYGeofencing();
     }
   };
@@ -219,6 +225,11 @@ const DetalleOrdenScreen: React.FC = () => {
     if (!selectedTipo) {
       Alert.alert('Selección requerida', 'Por favor selecciona cómo se realizó la entrega');
       return;
+    }
+
+    // Notificación: fin de entrega
+    if (selectedTipo === TipoRegistro.COMPLETO || selectedTipo === TipoRegistro.PARCIAL) {
+      await HereNotificationsMockService.simulateEntregaEvent('fin', cliente.cliente);
     }
 
     // VALIDACIÓN: Verificar si el folio ya está en sincronización

@@ -322,7 +322,13 @@ export default function TestDataAdminScreen() {
             Total: {numClientes * numEntregas} entregas
           </Text>
           <Text style={styles.summaryLocation}>
-            📍 {ubicacionZacatecas ? 'Zacatecas, Zacatecas' : 'Guadalajara, Jalisco'}
+            📍 {
+              ubicacionZacatecas
+                ? 'Zacatecas, Zacatecas'
+                : ubicacionMonterrey
+                  ? 'Monterrey, Nuevo León'
+                  : 'Guadalajara, Jalisco'
+            }
           </Text>
         </View>
       </View>
@@ -413,9 +419,9 @@ export default function TestDataAdminScreen() {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>ℹ️ Información</Text>
         <Text style={styles.infoText}>
-          • Los datos se guardan en el backend y base de datos{'\n'}
           • Guadalajara: Se generan clientes con direcciones en Jalisco{'\n'}
           • Zacatecas: Se generan clientes con direcciones en Zacatecas{'\n'}
+          • Monterrey: Se generan clientes con direcciones en Nuevo León{'\n'}
           • Las entregas incluyen productos realistas{'\n'}
           • Las rutas GPS simulan movimiento real{'\n'}
           • Puedes limpiar los datos en cualquier momento

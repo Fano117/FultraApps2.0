@@ -6,6 +6,7 @@
 
 import { apiService } from './apiService';
 import { testDataGenerator } from './testDataGenerator';
+import { HereNotificationsMockService } from './hereNotificationsMockService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   TestDataConfig,
@@ -37,11 +38,18 @@ class TestDataService {
 
       // 2. Convertir datos generados al formato ClienteEntregaDTO
       const clientesDTO = await this.convertToClienteEntregaDTO(clientes, entregas);
-      
+
+      // Notificación mock por cada ruta generada
+      if (rutas && rutas.length > 0) {
+        for (const cliente of clientes) {
+          await HereNotificationsMockService.simulateNuevaRuta(cliente.nombre);
+        }
+      }
+
       // 3. Guardar datos localmente usando AsyncStorage
       console.log('💾 Guardando datos en almacenamiento local...');
       await AsyncStorage.setItem('@FultraApps:clientesEntrega', JSON.stringify(clientesDTO));
-      
+
       const clientesCreados = clientes.length;
       const entregasCreadas = entregas.length;
       const rutasGeneradas = rutas?.length || 0;
