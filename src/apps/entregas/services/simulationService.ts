@@ -198,48 +198,50 @@ class SimulationService {
   }
 
   /**
-   * Calcular ruta óptima hacia el destino
+   * Calcular ruta óptima hacia el destino usando HERE Maps routingService
    */
-  private calcularRutaOptima(origen: { lat: number; lng: number }, destino: { lat: number; lng: number }): RutaOptima {
-    // Algoritmo simplificado para crear una ruta realista
-    const distancia = this.calcularDistancia(origen.lat, origen.lng, destino.lat, destino.lng);
-    
-    // Crear puntos intermedios para simular calles y rutas
-    const puntos: Array<{ lat: number; lng: number }> = [origen];
-    
-    // Calcular número de puntos intermedios basado en distancia
-    const numeroSegmentos = Math.max(3, Math.floor(distancia / 200)); // Un punto cada 200m aprox
-    
-    for (let i = 1; i < numeroSegmentos; i++) {
-      const progreso = i / numeroSegmentos;
-      
-      // Añadir variación para simular calles (no línea recta)
-      const variacionLat = (Math.random() - 0.5) * 0.003; // Pequeña variación
-      const variacionLng = (Math.random() - 0.5) * 0.003;
-      
-      const lat = origen.lat + (destino.lat - origen.lat) * progreso + variacionLat;
-      const lng = origen.lng + (destino.lng - origen.lng) * progreso + variacionLng;
-      
-      puntos.push({ lat, lng });
-    }
-    
-    puntos.push(destino);
-    
-    // Calcular distancia total de la ruta
-    let distanciaTotal = 0;
-    for (let i = 0; i < puntos.length - 1; i++) {
-      distanciaTotal += this.calcularDistancia(
-        puntos[i].lat, puntos[i].lng,
-        puntos[i + 1].lat, puntos[i + 1].lng
+  private async calcularRutaOptima(origen: { lat: number; lng: number }, destino: { lat: number; lng: number }): Promise<RutaOptima> {
+    // Importar routingService de forma dinámica para evitar dependencias circulares
+    const { routingService } = await import('./routingService');
+
+    try {
+      // Usar HERE Maps routingService para obtener la ruta real
+      const rutaHere = await routingService.obtenerRutaOptima(
+        { latitude: origen.lat, longitude: origen.lng },
+        { latitude: destino.lat, longitude: destino.lng }
       );
+
+      console.log(`📍 [SIMULATION] Ruta calculada con HERE Maps: ${(rutaHere.distance / 1000).toFixed(2)}km, ${rutaHere.coordinates.length} puntos`);
+
+      // Convertir formato de coordinates a nuestro formato
+      const puntos = rutaHere.coordinates.map(coord => ({
+        lat: coord.latitude,
+        lng: coord.longitude
+      }));
+
+      return {
+        puntos,
+        distanciaTotal: rutaHere.distance,
+        tiempoEstimado: Math.round(rutaHere.duration / 60) // convertir segundos a minutos
+      };
+    } catch (error) {
+      console.error('[SIMULATION] Error obteniendo ruta de HERE Maps, usando fallback:', error);
+
+      // Fallback: crear ruta básica si falla HERE Maps
+      return this.calcularRutaFallback(origen, destino);
     }
-    
-    // Tiempo estimado (velocidad promedio 30 km/h en ciudad)
-    const tiempoEstimado = Math.round(distanciaTotal / 500); // minutos
+  }
+
+  /**
+   * Ruta fallback simple (solo en caso de error)
+   */
+  private calcularRutaFallback(origen: { lat: number; lng: number }, destino: { lat: number; lng: number }): RutaOptima {
+    const distancia = this.calcularDistancia(origen.lat, origen.lng, destino.lat, destino.lng);
+    const tiempoEstimado = Math.round(distancia / 500); // minutos
 
     return {
-      puntos,
-      distanciaTotal,
+      puntos: [origen, destino],
+      distanciaTotal: distancia,
       tiempoEstimado
     };
   }
@@ -250,7 +252,7 @@ class SimulationService {
   async iniciarSimulacionEntrega(entregaId: string): Promise<void> {
     const entregas = this.entregas$.value;
     const entrega = entregas.find(e => e.id === entregaId);
-    
+
     if (!entrega) {
       throw new Error(`Entrega ${entregaId} no encontrada`);
     }
@@ -264,9 +266,13 @@ class SimulationService {
     // Parar simulación anterior si existe
     await this.pararSimulacion();
 
-    // Calcular ruta óptima
+    // Activar modo simulación en locationTrackingService
+    const { locationTrackingService } = await import('@/shared/services/locationTrackingService');
+    locationTrackingService.enableSimulationMode(true);
+
+    // Calcular ruta óptima usando HERE Maps
     const ubicacionActual = this.ubicacionChofer$.value;
-    const ruta = this.calcularRutaOptima(
+    const ruta = await this.calcularRutaOptima(
       { lat: ubicacionActual.latitud, lng: ubicacionActual.longitud },
       { lat: entrega.latitud, lng: entrega.longitud }
     );
@@ -289,10 +295,13 @@ class SimulationService {
   /**
    * Iniciar movimiento del chofer siguiendo la ruta
    */
-  private iniciarMovimientoChofer(ruta: Array<{ lat: number; lng: number }>, entrega: SimulacionEntrega): void {
+  private async iniciarMovimientoChofer(ruta: Array<{ lat: number; lng: number }>, entrega: SimulacionEntrega): Promise<void> {
     this.puntoActualRuta = 0;
     this.interpolacionProgreso = 0;
-    
+
+    // Importar locationTrackingService
+    const { locationTrackingService } = await import('@/shared/services/locationTrackingService');
+
     // Velocidad de movimiento (cada 1 segundo)
     this.intervalId = setInterval(() => {
       if (this.puntoActualRuta >= ruta.length - 1) {
@@ -311,24 +320,36 @@ class SimulationService {
         // Avanzar al siguiente segmento
         this.puntoActualRuta++;
         this.interpolacionProgreso = 0;
-        
+
         if (this.puntoActualRuta >= ruta.length - 1) {
           return;
         }
       }
 
       // Calcular nueva posición interpolada
+      const latitud = puntoOrigen.lat + (puntoDestino.lat - puntoOrigen.lat) * this.interpolacionProgreso;
+      const longitud = puntoOrigen.lng + (puntoDestino.lng - puntoOrigen.lng) * this.interpolacionProgreso;
+      const velocidad = 25 + Math.random() * 10; // 25-35 km/h
+
       const nuevaUbicacion: UbicacionChofer = {
-        latitud: puntoOrigen.lat + (puntoDestino.lat - puntoOrigen.lat) * this.interpolacionProgreso,
-        longitud: puntoOrigen.lng + (puntoDestino.lng - puntoOrigen.lng) * this.interpolacionProgreso,
-        velocidad: 25 + Math.random() * 10, // 25-35 km/h
+        latitud,
+        longitud,
+        velocidad,
         timestamp: new Date()
       };
 
+      // Calcular heading (dirección) basado en el movimiento
+      const deltaLat = puntoDestino.lat - puntoOrigen.lat;
+      const deltaLng = puntoDestino.lng - puntoOrigen.lng;
+      const heading = Math.atan2(deltaLng, deltaLat) * (180 / Math.PI);
+
+      // Actualizar locationTrackingService con la ubicación simulada
+      locationTrackingService.updateSimulatedLocation(latitud, longitud, velocidad, heading);
+
       // Calcular distancia al destino
       const distancia = this.calcularDistancia(
-        nuevaUbicacion.latitud,
-        nuevaUbicacion.longitud,
+        latitud,
+        longitud,
         entrega.latitud,
         entrega.longitud
       );
@@ -338,7 +359,7 @@ class SimulationService {
 
       // Emitir nueva ubicación
       this.ubicacionChofer$.next(nuevaUbicacion);
-      
+
     }, 1000); // Actualizar cada segundo
   }
 
@@ -433,11 +454,19 @@ class SimulationService {
    */
   async pararSimulacion(): Promise<void> {
     console.log('🛑 [SIMULACIÓN] Deteniendo simulación...');
-    
+
     // Limpiar intervalo
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
+    }
+
+    // Desactivar modo simulación en locationTrackingService
+    try {
+      const { locationTrackingService } = await import('@/shared/services/locationTrackingService');
+      locationTrackingService.enableSimulationMode(false);
+    } catch (error) {
+      console.error('[SIMULACIÓN] Error desactivando modo simulación:', error);
     }
 
     this.simulacionActiva$.next(false);

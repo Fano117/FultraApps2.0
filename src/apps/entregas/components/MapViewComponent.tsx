@@ -7,7 +7,8 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import MapView, { Marker, Polyline, PROVIDER_DEFAULT, Region } from 'react-native-maps';
+import MapView, { Marker, Polyline, PROVIDER_DEFAULT, Region, Camera } from 'react-native-maps';
+import { Ionicons } from '@expo/vector-icons';
 import { Entrega, Coordenadas } from '../types';
 import { colors } from '@/design-system';
 
@@ -18,6 +19,7 @@ interface MapViewComponentProps {
   onEntregaSelect?: (entrega: Entrega) => void;
   showRoute?: boolean;
   routeCoordinates?: Coordenadas[];
+  isSimulationMode?: boolean;
 }
 
 export const MapViewComponent: React.FC<MapViewComponentProps> = ({
@@ -27,10 +29,12 @@ export const MapViewComponent: React.FC<MapViewComponentProps> = ({
   onEntregaSelect,
   showRoute = false,
   routeCoordinates = [],
+  isSimulationMode = false,
 }) => {
   const mapRef = useRef<MapView>(null);
   const [region, setRegion] = useState<Region | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
+  const [zoomLevel, setZoomLevel] = useState(15);
 
   useEffect(() => {
     if (currentLocation) {
@@ -78,6 +82,36 @@ export const MapViewComponent: React.FC<MapViewComponentProps> = ({
     }
   };
 
+  const handleZoomIn = () => {
+    const newZoom = Math.min(zoomLevel + 1, 20);
+    setZoomLevel(newZoom);
+    if (mapRef.current && currentLocation) {
+      const camera: Partial<Camera> = {
+        center: {
+          latitude: currentLocation.latitud,
+          longitude: currentLocation.longitud,
+        },
+        zoom: newZoom,
+      };
+      mapRef.current.animateCamera(camera, { duration: 300 });
+    }
+  };
+
+  const handleZoomOut = () => {
+    const newZoom = Math.max(zoomLevel - 1, 5);
+    setZoomLevel(newZoom);
+    if (mapRef.current && currentLocation) {
+      const camera: Partial<Camera> = {
+        center: {
+          latitude: currentLocation.latitud,
+          longitude: currentLocation.longitud,
+        },
+        zoom: newZoom,
+      };
+      mapRef.current.animateCamera(camera, { duration: 300 });
+    }
+  };
+
   const getMarkerColor = (estatus: string): string => {
     switch (estatus) {
       case 'COMPLETADA':
@@ -110,6 +144,11 @@ export const MapViewComponent: React.FC<MapViewComponentProps> = ({
         showsMyLocationButton={false}
         showsCompass={true}
         loadingEnabled={true}
+        zoomEnabled={true}
+        zoomControlEnabled={false}
+        scrollEnabled={true}
+        pitchEnabled={isSimulationMode}
+        rotateEnabled={isSimulationMode}
       >
         {currentLocation && (
           <Marker
@@ -155,10 +194,20 @@ export const MapViewComponent: React.FC<MapViewComponentProps> = ({
 
       <View style={styles.controls}>
         <TouchableOpacity style={styles.controlButton} onPress={centerOnLocation}>
-          <Text style={styles.controlButtonText}>📍</Text>
+          <Ionicons name="locate" size={24} color={colors.primary[500]} />
         </TouchableOpacity>
         <TouchableOpacity style={styles.controlButton} onPress={fitToMarkers}>
-          <Text style={styles.controlButtonText}>🗺️</Text>
+          <Ionicons name="map-outline" size={24} color={colors.primary[500]} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Controles de zoom */}
+      <View style={styles.zoomControls}>
+        <TouchableOpacity style={styles.zoomButton} onPress={handleZoomIn}>
+          <Ionicons name="add" size={24} color={colors.primary[500]} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.zoomButton} onPress={handleZoomOut}>
+          <Ionicons name="remove" size={24} color={colors.primary[500]} />
         </TouchableOpacity>
       </View>
     </View>
@@ -213,5 +262,26 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  zoomControls: {
+    position: 'absolute',
+    right: 16,
+    bottom: 200,
+    backgroundColor: 'white',
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    overflow: 'hidden',
+  },
+  zoomButton: {
+    width: 48,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderBottomWidth: 0.5,
+    borderBottomColor: colors.neutral[200],
   },
 });

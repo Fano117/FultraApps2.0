@@ -39,7 +39,7 @@ export interface TrackingState {
 class LocationTrackingService {
   private locationSubscription: Location.LocationSubscription | null = null;
   private backgroundSubscription: Location.LocationSubscription | null = null;
-  
+
   // Observables para estado reactivo
   private locationSubject = new BehaviorSubject<LocationUpdate | null>(null);
   private trackingStateSubject = new BehaviorSubject<TrackingState>({
@@ -49,6 +49,10 @@ class LocationTrackingService {
     error: null
   });
   private geofenceSubject = new Subject<GeofenceStatus>();
+
+  // Modo simulación
+  private simulationMode = false;
+  private simulatedLocation: LocationUpdate | null = null;
 
   // Configuración de tracking
   private readonly HIGH_ACCURACY_OPTIONS: Location.LocationOptions = {
@@ -220,8 +224,17 @@ class LocationTrackingService {
    */
   async getCurrentLocation(): Promise<LocationUpdate | null> {
     try {
+      // Si está en modo simulación, devolver ubicación simulada
+      if (this.simulationMode && this.simulatedLocation) {
+        console.log('[GPS TRACKING] 🎮 Usando ubicación simulada:', {
+          lat: this.simulatedLocation.coordinates.latitude.toFixed(6),
+          lng: this.simulatedLocation.coordinates.longitude.toFixed(6)
+        });
+        return this.simulatedLocation;
+      }
+
       console.log('[GPS TRACKING] 📍 Obteniendo ubicación actual...');
-      
+
       const canUseLocation = await permissionsService.canUseLocation();
       if (!canUseLocation) {
         console.log('[GPS TRACKING] ❌ Sin permisos de ubicación');
@@ -254,6 +267,49 @@ class LocationTrackingService {
       console.error('[GPS TRACKING] ❌ Error obteniendo ubicación:', error);
       return null;
     }
+  }
+
+  /**
+   * Activar modo simulación
+   */
+  enableSimulationMode(enable: boolean = true): void {
+    this.simulationMode = enable;
+    console.log(`[GPS TRACKING] 🎮 Modo simulación: ${enable ? 'ACTIVADO' : 'DESACTIVADO'}`);
+  }
+
+  /**
+   * Actualizar ubicación simulada
+   */
+  updateSimulatedLocation(latitude: number, longitude: number, speed: number = 0, heading: number = 0): void {
+    if (!this.simulationMode) {
+      console.warn('[GPS TRACKING] ⚠️ Modo simulación no está activado');
+      return;
+    }
+
+    const update: LocationUpdate = {
+      coordinates: {
+        latitude,
+        longitude
+      },
+      accuracy: 10,
+      timestamp: Date.now(),
+      speed,
+      heading
+    };
+
+    this.simulatedLocation = update;
+    this.locationSubject.next(update);
+    this.updateTrackingState({
+      currentLocation: update,
+      isTracking: true
+    });
+  }
+
+  /**
+   * Obtener estado del modo simulación
+   */
+  isSimulationMode(): boolean {
+    return this.simulationMode;
   }
 
   /**

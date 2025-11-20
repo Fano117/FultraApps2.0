@@ -53,6 +53,7 @@ export const NavigationScreen: React.FC = () => {
   const [navigationState, setNavigationState] = useState<NavigationState | null>(null);
   const [showTrafficAlert, setShowTrafficAlert] = useState(false);
   const [cameraHeading, setCameraHeading] = useState(0);
+  const [zoomLevel, setZoomLevel] = useState(17);
 
   const mapRef = useRef<MapView>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
@@ -153,10 +154,40 @@ export const NavigationScreen: React.FC = () => {
       pitch: 60, // Vista en tercera persona
       heading: cameraHeading,
       altitude: 500,
-      zoom: 17,
+      zoom: zoomLevel,
     };
 
     mapRef.current.animateCamera(camera, { duration: 1000 });
+  };
+
+  /**
+   * Acercar zoom
+   */
+  const handleZoomIn = () => {
+    const newZoom = Math.min(zoomLevel + 1, 20);
+    setZoomLevel(newZoom);
+    if (mapRef.current) {
+      mapRef.current.animateCamera({ zoom: newZoom }, { duration: 300 });
+    }
+  };
+
+  /**
+   * Alejar zoom
+   */
+  const handleZoomOut = () => {
+    const newZoom = Math.max(zoomLevel - 1, 10);
+    setZoomLevel(newZoom);
+    if (mapRef.current) {
+      mapRef.current.animateCamera({ zoom: newZoom }, { duration: 300 });
+    }
+  };
+
+  /**
+   * Recentrar cámara y restaurar zoom óptimo
+   */
+  const handleRecenter = () => {
+    setZoomLevel(17); // Restaurar zoom óptimo para navegación
+    updateCamera();
   };
 
   /**
@@ -310,6 +341,9 @@ export const NavigationScreen: React.FC = () => {
         showsTraffic={true}
         pitchEnabled={true}
         rotateEnabled={true}
+        zoomEnabled={true}
+        zoomControlEnabled={false}
+        scrollEnabled={true}
       >
         {/* Ruta */}
         {navigationState.currentRoute && (
@@ -476,10 +510,20 @@ export const NavigationScreen: React.FC = () => {
       {/* Botón de recentrar */}
       <TouchableOpacity
         style={styles.recenterButton}
-        onPress={() => updateCamera()}
+        onPress={handleRecenter}
       >
         <Ionicons name="locate" size={24} color={colors.primary} />
       </TouchableOpacity>
+
+      {/* Controles de zoom */}
+      <View style={styles.zoomControls}>
+        <TouchableOpacity style={styles.zoomButton} onPress={handleZoomIn}>
+          <Ionicons name="add" size={24} color={colors.primary} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.zoomButton} onPress={handleZoomOut}>
+          <Ionicons name="remove" size={24} color={colors.primary} />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -683,5 +727,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 2,
     borderColor: colors.warning,
+  },
+  zoomControls: {
+    position: 'absolute',
+    bottom: 280,
+    right: spacing[4],
+    backgroundColor: 'white',
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+    overflow: 'hidden',
+  },
+  zoomButton: {
+    width: 48,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderBottomWidth: 0.5,
+    borderBottomColor: colors.neutral[200],
   },
 });

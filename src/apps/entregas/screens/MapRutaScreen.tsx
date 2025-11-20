@@ -41,10 +41,12 @@ export const MapRutaScreen: React.FC<MapRutaScreenProps> = ({ navigation, route 
     distanciaTotal: 0,
     tiempoEstimado: 0,
   });
+  const [isSimulationMode, setIsSimulationMode] = useState(false);
 
   useEffect(() => {
     loadRoute();
     startLocationTracking();
+    checkSimulationMode();
 
     return () => {
       locationService.stopForegroundTracking();
@@ -92,6 +94,24 @@ export const MapRutaScreen: React.FC<MapRutaScreenProps> = ({ navigation, route 
     }
 
     await locationService.startForegroundTracking(choferId);
+  };
+
+  const checkSimulationMode = async () => {
+    try {
+      const { locationTrackingService } = await import('@/shared/services/locationTrackingService');
+      const isSimulation = locationTrackingService.isSimulationMode();
+      setIsSimulationMode(isSimulation);
+
+      // Verificar periódicamente si el modo cambió
+      const interval = setInterval(() => {
+        const currentSimulation = locationTrackingService.isSimulationMode();
+        setIsSimulationMode(currentSimulation);
+      }, 1000);
+
+      return () => clearInterval(interval);
+    } catch (error) {
+      console.error('Error checking simulation mode:', error);
+    }
   };
 
   const setupGeofencing = (entregasList: Entrega[]) => {
@@ -158,9 +178,10 @@ export const MapRutaScreen: React.FC<MapRutaScreenProps> = ({ navigation, route 
         onEntregaSelect={handleEntregaSelect}
         showRoute={true}
         routeCoordinates={routeCoordinates}
+        isSimulationMode={isSimulationMode}
       />
 
-      {selectedEntrega && selectedEntrega.estatus !== 'COMPLETADA' && (
+      {!isSimulationMode && selectedEntrega && selectedEntrega.estatus !== 'COMPLETADA' && (
         <View style={styles.bottomSheet}>
           <View style={styles.bottomSheetContent}>
             <Text style={styles.clientName}>{selectedEntrega.cliente.nombre}</Text>

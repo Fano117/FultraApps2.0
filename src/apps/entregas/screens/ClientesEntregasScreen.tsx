@@ -33,7 +33,18 @@ const ClientesEntregasScreen: React.FC = () => {
 
   useEffect(() => {
     getLocation();
-    loadData();
+    loadData(false); // No mostrar alerta en carga inicial
+
+    // Activar listener de conectividad para sincronización automática
+    syncService.startConnectivityListener(() => {
+      // Callback cuando se completa una sincronización automática
+      dispatch(loadLocalData());
+    });
+
+    return () => {
+      // Limpiar listener al salir del módulo
+      syncService.stopConnectivityListener();
+    };
   }, []);
 
   // Recarga automática cuando cambian los datos en el store
@@ -55,33 +66,6 @@ const ClientesEntregasScreen: React.FC = () => {
       setLocationError('Error obteniendo ubicación');
     }
   };
-
-  const loadData = async () => {
-    try {
-      console.log('[CLIENTES SCREEN] 📱 Cargando datos con nuevos endpoints...');
-      await dispatch(loadLocalData());
-      await dispatch(fetchEmbarques());
-      // Notificación: fin de entrega (mock, se dispara al refrescar datos)
-      if (clientes.length > 0) {
-        for (const cliente of clientes) {
-          await HereNotificationsMockService.simulateEntregaEvent('fin', cliente.cliente);
-        }
-      }
-    } catch (error) {
-      console.error('[CLIENTES SCREEN] ❌ Error cargando datos:', error);
-    loadData(false); // No mostrar alerta en carga inicial
-
-    // Activar listener de conectividad para sincronización automática
-    syncService.startConnectivityListener(() => {
-      // Callback cuando se completa una sincronización automática
-      dispatch(loadLocalData());
-    });
-
-    return () => {
-      // Limpiar listener al salir del módulo
-      syncService.stopConnectivityListener();
-    };
-  }, []);
 
   const loadData = async (showAlert: boolean = true) => {
     await dispatch(loadLocalData());
@@ -286,7 +270,6 @@ const ClientesEntregasScreen: React.FC = () => {
       </View>
 
       <FlatList
-  data={clientes}
         data={getClientesFiltrados()}
         renderItem={renderCliente}
         keyExtractor={(item, index) => `${item.carga}-${item.cuentaCliente}-${index}`}
