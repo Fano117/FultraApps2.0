@@ -10,7 +10,8 @@
       "Bash(npx tsc:*)",
       "Bash(npm run android:*)",
       "Bash(eas:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(npx expo install:*)"
     ],
     "deny": [],
     "ask": []
