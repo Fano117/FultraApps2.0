@@ -1,4 +1,5 @@
-export const BASE_LOGIN = 'https://identity.fultra.net';
+// export const BASE_LOGIN = 'https://identity.fultra.net';
+export const BASE_LOGIN = 'https://auth.fultra.net';
 
 export const APP_AUTH_REDIRECT_SCHEME = 'com.fultraapps';
 
@@ -14,6 +15,11 @@ export const environments: Record<string, EnvironmentConfig> = {
     apiKey: 'qXwXO937WpdJ4MCnUMx77a7B6CIuwqDDAe1kr6rPc9A=',
     apiLogin: BASE_LOGIN,
   },
+  productionNewIntranet: {
+    apiUrl: 'https://aplicaciones.fultra.net/FultraTrackServiceNewIntranet/api',
+    apiKey: 'qXwXO937WpdJ4MCnUMx77a7B6CIuwqDDAe1kr6rPc9A=',
+    apiLogin: BASE_LOGIN,
+  },
   pruebas: {
     apiUrl: 'https://demoaplicaciones.fultra.mx/fultratrack/api',
     apiKey: 'qXwXO937WpdJ4MCnUMx77a7B6CIuwqDDAe1kr6rPc9A=',
@@ -26,7 +32,7 @@ export const environments: Record<string, EnvironmentConfig> = {
   },
 } as const;
 
-export const CURRENT_ENV: keyof typeof environments = 'ngrok';
+export const CURRENT_ENV: keyof typeof environments = 'productionNewIntranet';
 
 export const APP_VERSION = 'v1.3';
 

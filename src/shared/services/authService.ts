@@ -138,30 +138,52 @@ class AuthService {
   async signOut(): Promise<boolean> {
     try {
       const token = await AsyncStorage.getItem(TOKEN_KEY);
+      const accessToken = await AsyncStorage.getItem(ACCESS_TOKEN_KEY);
 
-      if (token) {
+      // Cerrar sesión en el servidor de identidad
+      if (token || accessToken) {
         try {
-          // Revoke the token with the identity server
-          const revokeUrl = discovery.revocationEndpoint;
-          if (revokeUrl) {
-            await AuthSession.revokeAsync(
-              {
-                clientId,
-                clientSecret,
-                token,
-              },
-              discovery
-            );
+          // 1. Llamar al endpoint de signout para cerrar la sesión y limpiar cookies
+          const signoutUrl = `${discovery.endSessionEndpoint}?post_logout_redirect_uri=${encodeURIComponent(redirectUri)}`;
+
+          console.log('🚪 Cerrando sesión en el servidor...', signoutUrl);
+
+          // Abrir el navegador para que OpenIddict procese el signout y limpie las cookies
+          const result = await WebBrowser.openAuthSessionAsync(
+            signoutUrl,
+            redirectUri
+          );
+
+          console.log('✅ Resultado del signout:', result.type);
+
+          // 2. Revocar el access token si existe
+          if (accessToken && discovery.revocationEndpoint) {
+            try {
+              await AuthSession.revokeAsync(
+                {
+                  clientId,
+                  clientSecret,
+                  token: accessToken,
+                },
+                discovery
+              );
+              console.log('✅ Token revocado');
+            } catch (revokeError) {
+              console.warn('⚠️ Error revocando token:', revokeError);
+            }
           }
         } catch (logoutError) {
-          console.warn('Error logging out from server, continuing with local cleanup:', logoutError);
+          console.warn('⚠️ Error durante el signout del servidor, continuando con limpieza local:', logoutError);
         }
       }
 
+      // 3. Limpiar tokens locales
       await this.clearTokens();
+      console.log('✅ Tokens locales eliminados');
+
       return true;
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error('❌ Error signing out:', error);
       await this.clearTokens();
       return false;
     }
