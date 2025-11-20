@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Alert, AppState, AppStateStatus, Linking } from 'react-native';
 import VersionCheck from 'react-native-version-check-expo';
+import { ENABLE_APP_UPDATE_CHECK } from '@/shared/config/environments';
 
 /**
  * Hook personalizado para verificar y forzar actualizaciones de la app
@@ -42,6 +43,20 @@ export const useAppUpdate = () => {
   };
 
   const checkForUpdate = async () => {
+    // Verificar si la feature está habilitada
+    if (!ENABLE_APP_UPDATE_CHECK) {
+      console.log('[AppUpdate] ⚠️  Verificación deshabilitada por configuración (ENABLE_APP_UPDATE_CHECK = false)');
+      console.log('[AppUpdate] Para habilitar, cambia ENABLE_APP_UPDATE_CHECK a true en src/shared/config/environments.ts');
+      return;
+    }
+
+    // Deshabilitar en modo desarrollo
+    if (__DEV__) {
+      console.log('[AppUpdate] ⚠️  Verificación deshabilitada en modo desarrollo');
+      console.log('[AppUpdate] Solo funciona en producción cuando la app está en Play Store/App Store');
+      return;
+    }
+
     // Evitar múltiples verificaciones simultáneas
     if (isCheckingUpdate.current) {
       console.log('[AppUpdate] Ya hay una verificación en progreso');
@@ -79,8 +94,20 @@ export const useAppUpdate = () => {
     } catch (error: any) {
       console.error('[AppUpdate] Error verificando actualización:', error);
 
-      // Solo mostrar error si es crítico (opcional)
-      // No queremos interrumpir la experiencia del usuario por un error de verificación
+      // Errores comunes:
+      // - App no publicada en Play Store/App Store
+      // - Package name incorrecto en app.json
+      // - Sin conexión a internet
+
+      if (error?.message?.includes('Parse Error') || error?.message?.includes('not found')) {
+        console.warn('[AppUpdate] ⚠️  App no encontrada en las tiendas');
+        console.warn('[AppUpdate] Verifica que:');
+        console.warn('[AppUpdate] 1. La app esté publicada en Play Store (Android) o App Store (iOS)');
+        console.warn('[AppUpdate] 2. El package name en app.json coincida con el de la tienda');
+        console.warn('[AppUpdate] 3. Package actual: com.fultraapps');
+      }
+
+      // No mostramos alert al usuario para no interrumpir su experiencia
     } finally {
       isCheckingUpdate.current = false;
     }

@@ -37,3 +37,14 @@ export const CURRENT_ENV: keyof typeof environments = 'productionNewIntranet';
 export const APP_VERSION = 'v1.3';
 
 export const config = environments[CURRENT_ENV];
+
+// Feature Flags
+/**
+ * Habilitar verificación de actualizaciones con Play Store/App Store
+ * - true: Verifica actualizaciones automáticamente (solo funciona con app publicada en producción)
+ * - false: Deshabilita completamente la verificación
+ *
+ * IMPORTANTE: Solo funciona cuando la app está publicada en Play Store (producción)
+ * NO funciona con Internal Testing, Closed Testing o Open Testing
+ */
+export const ENABLE_APP_UPDATE_CHECK = false; // Cambiar a true cuando la app esté en producción

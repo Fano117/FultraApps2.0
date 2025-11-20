@@ -2,6 +2,29 @@
 
 Sistema de actualización automática que **consulta directamente con Play Store (Android) y App Store (iOS)** para verificar si hay una nueva versión disponible.
 
+---
+
+## 🚀 Inicio rápido (TL;DR)
+
+### 1️⃣ Durante desarrollo y testing
+```typescript
+// src/shared/config/environments.ts
+export const ENABLE_APP_UPDATE_CHECK = false; // ✅ Ya configurado por defecto
+```
+
+### 2️⃣ Cuando publiques en producción
+```typescript
+// src/shared/config/environments.ts
+export const ENABLE_APP_UPDATE_CHECK = true; // ⚠️ Cambiar a true
+```
+
+### 3️⃣ Listo!
+La app verificará automáticamente actualizaciones cuando los usuarios la abran.
+
+**Importante:** Solo funciona con apps publicadas en **PRODUCCIÓN** en Play Store/App Store (NO funciona con Internal Testing, Beta, etc.)
+
+---
+
 ## ✅ Características
 
 - **Android + iOS**: Funciona en ambas plataformas
@@ -49,11 +72,27 @@ Usuario instala actualización manualmente
 npm install react-native-version-check-expo
 ```
 
-### 2. Hook personalizado
+### 2. Configuración (IMPORTANTE)
+
+La verificación está **deshabilitada por defecto**. Para habilitarla:
+
+**[src/shared/config/environments.ts](../src/shared/config/environments.ts)**:
+
+```typescript
+// Cambiar de false a true cuando la app esté en producción
+export const ENABLE_APP_UPDATE_CHECK = true;
+```
+
+⚠️ **Solo habilita cuando**:
+- La app esté publicada en **Play Store en PRODUCCIÓN** (no testing)
+- Tengas al menos una versión pública disponible
+- Estés listo para que los usuarios vean alerts de actualización
+
+### 3. Hook personalizado
 
 El hook `useAppUpdate` está integrado en [src/shared/hooks/useAppUpdate.ts](../src/shared/hooks/useAppUpdate.ts)
 
-### 3. Integración en la app
+### 4. Integración en la app
 
 Ya está integrado en [App.tsx](../App.tsx):
 
@@ -169,9 +208,24 @@ La librería hace una petición HTTP a las tiendas y compara versiones:
 
 ## 🧪 Testing
 
+### ⚠️ IMPORTANTE: No funciona en modo desarrollo
+
+**El hook está DESHABILITADO automáticamente cuando `__DEV__ === true`** para evitar errores.
+
+Verás este log en desarrollo:
+```
+[AppUpdate] ⚠️  Verificación deshabilitada en modo desarrollo
+[AppUpdate] Solo funciona en producción cuando la app está en Play Store/App Store
+```
+
+**Razones:**
+- La app no está publicada en Play Store/App Store todavía
+- Play Store devuelve 404 "Not Found"
+- Solo funciona con builds de producción instalados desde las tiendas
+
 ### Testing en desarrollo
 
-**NO funciona en Expo Go**. Necesitas:
+**NO funciona en Expo Go ni development builds**. Necesitas:
 
 1. **Build de desarrollo:**
    ```bash
@@ -187,6 +241,34 @@ La librería hace una petición HTTP a las tiendas y compara versiones:
    - Versión 1.4.0 → Dispositivo (vía build local)
 
 5. **Abrir app v1.3.0** → Debería detectar v1.4.0
+
+### 📱 Primera publicación (requisito)
+
+**Para que el hook funcione, primero debes publicar la app en las tiendas:**
+
+#### Android (Play Store)
+
+1. **Crear cuenta de Google Play Developer** ($25 único)
+
+2. **Build de producción:**
+   ```bash
+   eas build --platform android --profile production
+   ```
+
+3. **Subir a Play Store Console:**
+   - Crear nueva aplicación
+   - Package name: `com.fultraapps` (debe coincidir con app.json)
+   - Subir el AAB/APK
+   - Completar ficha de la tienda (descripción, capturas, etc.)
+   - Publicar en **Producción** (no solo beta/internal testing)
+
+4. **Esperar aprobación** (puede tomar 1-3 días)
+
+5. **Una vez publicada**, el hook empezará a funcionar
+
+#### iOS (App Store)
+
+Similar proceso con Apple Developer Program ($99/año).
 
 ### Testing real (recomendado)
 
@@ -212,22 +294,78 @@ La librería hace una petición HTTP a las tiendas y compara versiones:
 
 ## 📊 Logs del sistema
 
-El hook genera logs detallados en la consola:
+El hook genera logs detallados según el estado:
 
+### Estado 1: Deshabilitado por configuración (más común durante desarrollo)
+```
+[AppUpdate] ⚠️  Verificación deshabilitada por configuración (ENABLE_APP_UPDATE_CHECK = false)
+[AppUpdate] Para habilitar, cambia ENABLE_APP_UPDATE_CHECK a true en src/shared/config/environments.ts
+```
+
+### Estado 2: Deshabilitado por modo desarrollo
+```
+[AppUpdate] ⚠️  Verificación deshabilitada en modo desarrollo
+[AppUpdate] Solo funciona en producción cuando la app está en Play Store/App Store
+```
+
+### Estado 3: Habilitado y funcionando (producción con actualización disponible)
 ```
 [AppUpdate] Verificando actualizaciones en tiendas...
 [AppUpdate] Versión actual: 1.3.0
 [AppUpdate] Versión en tienda: 1.4.0
 [AppUpdate] Resultado: { currentVersion: '1.3.0', latestVersion: '1.4.0', isNeeded: true }
 [AppUpdate] ¡Actualización disponible! Mostrando alerta...
-[AppUpdate] Abriendo tienda: https://play.google.com/store/apps/details?id=com.tuapp.nombre
+[AppUpdate] Abriendo tienda: https://play.google.com/store/apps/details?id=com.fultraapps
+```
+
+### Estado 4: Habilitado sin actualización necesaria
+```
+[AppUpdate] Verificando actualizaciones en tiendas...
+[AppUpdate] Versión actual: 1.4.0
+[AppUpdate] Versión en tienda: 1.4.0
+[AppUpdate] Resultado: { currentVersion: '1.4.0', latestVersion: '1.4.0', isNeeded: false }
+[AppUpdate] App está actualizada
+```
+
+### Estado 5: Error (app no publicada en tiendas)
+```
+[AppUpdate] Error verificando actualización: [Error: ...]
+[AppUpdate] ⚠️  App no encontrada en las tiendas
+[AppUpdate] Verifica que:
+[AppUpdate] 1. La app esté publicada en Play Store (Android) o App Store (iOS)
+[AppUpdate] 2. El package name en app.json coincida con el de la tienda
+[AppUpdate] 3. Package actual: com.fultraapps
 ```
 
 ---
 
 ## 🔧 Personalización
 
-### 1. Cambiar el mensaje del Alert
+### 1. Activar/Desactivar la verificación
+
+**Forma más sencilla - usando la variable de configuración:**
+
+```typescript
+// src/shared/config/environments.ts
+
+// ✅ Habilitar (solo cuando esté publicado en Play Store/App Store producción)
+export const ENABLE_APP_UPDATE_CHECK = true;
+
+// ❌ Deshabilitar (durante desarrollo o testing interno)
+export const ENABLE_APP_UPDATE_CHECK = false;
+```
+
+**Logs cuando está deshabilitado:**
+```
+[AppUpdate] ⚠️  Verificación deshabilitada por configuración (ENABLE_APP_UPDATE_CHECK = false)
+[AppUpdate] Para habilitar, cambia ENABLE_APP_UPDATE_CHECK a true en src/shared/config/environments.ts
+```
+
+**Casos de uso:**
+- `false`: Durante desarrollo, testing interno, o beta testing
+- `true`: Solo cuando la app esté en producción en las tiendas
+
+### 2. Cambiar el mensaje del Alert
 
 ```typescript
 // src/shared/hooks/useAppUpdate.ts
@@ -249,7 +387,7 @@ const showUpdateAlert = (latestVersion: string) => {
 };
 ```
 
-### 2. Hacer la actualización opcional (no forzada)
+### 3. Hacer la actualización opcional (no forzada)
 
 ```typescript
 Alert.alert(
@@ -269,7 +407,7 @@ Alert.alert(
 );
 ```
 
-### 3. Verificar solo en ciertas condiciones
+### 4. Verificar solo en ciertas condiciones
 
 ```typescript
 const checkForUpdate = async () => {
@@ -293,7 +431,9 @@ const checkForUpdate = async () => {
 };
 ```
 
-### 4. Deshabilitar temporalmente
+### 5. Deshabilitar temporalmente sin modificar environments.ts
+
+Si prefieres no modificar el archivo de configuración:
 
 ```typescript
 // App.tsx
@@ -307,6 +447,8 @@ export default function App() {
   );
 }
 ```
+
+**Nota:** Es mejor usar `ENABLE_APP_UPDATE_CHECK` en environments.ts para mayor control.
 
 ---
 
@@ -343,6 +485,40 @@ export default function App() {
 - **`react-native-version-check-expo`** (actual): Para verificar actualizaciones de **versiones nativas** en las tiendas
 - **EAS Update**: Para actualizaciones **OTA de JavaScript/assets** sin pasar por tiendas
 - **Ambos**: Para cobertura completa (actualizaciones rápidas OTA + verificación de tiendas)
+
+---
+
+## 📋 Guía rápida: ¿Cuándo habilitar la verificación?
+
+| Situación | ENABLE_APP_UPDATE_CHECK | Razón |
+|-----------|------------------------|-------|
+| **Desarrollo local** | `false` | No funciona en modo desarrollo |
+| **Internal Testing** | `false` | App no tiene página pública en Play Store |
+| **Closed Testing (Beta)** | `false` | App no tiene página pública en Play Store |
+| **Open Testing** | `false` | App no tiene página pública en Play Store |
+| **Primera versión en producción** | `true` | ✅ App tiene página pública, la verificación funcionará |
+| **Versiones posteriores** | `true` | ✅ Detectará actualizaciones automáticamente |
+
+### Workflow recomendado:
+
+```bash
+# 1. Durante desarrollo y testing
+ENABLE_APP_UPDATE_CHECK = false
+
+# 2. Primera publicación en producción
+# - Publica v1.0.0 en Play Store → Producción
+# - Espera aprobación
+
+# 3. Una vez aprobada, habilita la verificación
+ENABLE_APP_UPDATE_CHECK = true
+
+# 4. Build nueva versión con verificación habilitada
+eas build --platform android --profile production
+
+# 5. Publica v1.1.0 en Play Store
+
+# 6. Usuarios con v1.0.0 verán alert al abrir la app ✅
+```
 
 ---
 
