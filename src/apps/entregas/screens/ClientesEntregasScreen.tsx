@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import * as Location from 'expo-location';
 import {
   View,
   StyleSheet,
@@ -10,11 +11,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Card, Typography, Badge, colors, spacing, borderRadius } from '@/design-system';
+import { Card, Typography, Badge, Button, colors, spacing, borderRadius } from '@/design-system';
 import { useAppSelector, useAppDispatch } from '@/shared/hooks';
 import { fetchEmbarques, loadLocalData } from '../store/entregasSlice';
 import { ClienteEntregaDTO } from '../models';
 import { EntregasStackParamList } from '@/navigation/types';
+import { HereNotificationsMockService } from '@/shared/services/hereNotificationsMockService';
 import { syncService } from '../services/syncService';
 
 type NavigationProp = NativeStackNavigationProp<EntregasStackParamList, 'ClientesEntregas'>;
@@ -26,8 +28,47 @@ const ClientesEntregasScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   const { clientes, loading, entregasSync } = useAppSelector((state) => state.entregas);
   const [filtroActivo, setFiltroActivo] = useState<FiltroEstado>('Pendientes');
+  const [location, setLocation] = useState<{ latitud: number; longitud: number } | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   useEffect(() => {
+    getLocation();
+    loadData();
+  }, []);
+
+  // Recarga automática cuando cambian los datos en el store
+  useEffect(() => {
+    // Si los datos cambian, actualiza la pantalla
+    // Esto fuerza el re-render si el store cambia
+  }, [clientes, entregasSync]);
+
+  const getLocation = async () => {
+    try {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setLocationError('Permiso de ubicación denegado');
+        return;
+      }
+      let loc = await Location.getCurrentPositionAsync({});
+      setLocation({ latitud: loc.coords.latitude, longitud: loc.coords.longitude });
+    } catch (error) {
+      setLocationError('Error obteniendo ubicación');
+    }
+  };
+
+  const loadData = async () => {
+    try {
+      console.log('[CLIENTES SCREEN] 📱 Cargando datos con nuevos endpoints...');
+      await dispatch(loadLocalData());
+      await dispatch(fetchEmbarques());
+      // Notificación: fin de entrega (mock, se dispara al refrescar datos)
+      if (clientes.length > 0) {
+        for (const cliente of clientes) {
+          await HereNotificationsMockService.simulateEntregaEvent('fin', cliente.cliente);
+        }
+      }
+    } catch (error) {
+      console.error('[CLIENTES SCREEN] ❌ Error cargando datos:', error);
     loadData(false); // No mostrar alerta en carga inicial
 
     // Activar listener de conectividad para sincronización automática
@@ -100,7 +141,8 @@ const ClientesEntregasScreen: React.FC = () => {
     { label: 'Todos', count: clientes.reduce((sum, c) => sum + c.entregas.length, 0), color: colors.primary[500] },
   ];
 
-  const handleClientePress = (cliente: ClienteEntregaDTO) => {
+  const handleClientePress = async (cliente: ClienteEntregaDTO) => {
+    await HereNotificationsMockService.simulateEntregaEvent('inicio', cliente.cliente);
     navigation.navigate('OrdenesVenta', { cliente });
   };
 
@@ -208,7 +250,21 @@ const ClientesEntregasScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+  <View style={styles.container}>
+      {locationError && (
+        <View style={{ padding: 16 }}>
+          <Typography variant="caption" color="secondary">
+            {locationError}
+          </Typography>
+        </View>
+      )}
+      {location && (
+        <View style={{ padding: 16 }}>
+          <Typography variant="caption" color="secondary">
+            Ubicación actual: {location.latitud.toFixed(5)}, {location.longitud.toFixed(5)}
+          </Typography>
+        </View>
+      )}
       <View style={styles.header}>
         <Typography variant="h5">Clientes - Entregas</Typography>
       </View>
@@ -230,9 +286,10 @@ const ClientesEntregasScreen: React.FC = () => {
       </View>
 
       <FlatList
+  data={clientes}
         data={getClientesFiltrados()}
         renderItem={renderCliente}
-        keyExtractor={(item) => `${item.carga}-${item.cuentaCliente}`}
+        keyExtractor={(item, index) => `${item.carga}-${item.cuentaCliente}-${index}`}
         contentContainerStyle={styles.listContent}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={loadData} />}
         ListEmptyComponent={
@@ -241,8 +298,8 @@ const ClientesEntregasScreen: React.FC = () => {
             <Typography variant="h6" color="secondary" align="center" style={styles.emptyText}>
               No hay clientes con entregas
             </Typography>
-            <Typography variant="body2" color="secondary" align="center">
-              Desliza hacia abajo para actualizar
+            <Typography variant="body2" color="secondary" align="center" style={styles.emptyDescription}>
+              Usa la pantalla "Testing" para generar datos mock
             </Typography>
           </View>
         }
@@ -257,6 +314,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.secondary,
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     padding: spacing[4],
     backgroundColor: colors.white,
     borderBottomWidth: 1,
@@ -334,6 +394,9 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     marginTop: spacing[4],
+    marginBottom: spacing[2],
+  },
+  emptyDescription: {
     marginBottom: spacing[2],
   },
 });

@@ -9,9 +9,10 @@
       "Bash(npm run type-check:*)",
       "Bash(npx tsc:*)",
       "Bash(npm run android:*)",
-      "Bash(eas:*)",
-      "Bash(cat:*)",
-      "Bash(npx expo install:*)"
+      "Bash(curl:*)",
+      "Bash(echo:*)",
+      "Bash(npm config set:*)",
+      "Bash(npm list:*)"
     ],
     "deny": [],
     "ask": []

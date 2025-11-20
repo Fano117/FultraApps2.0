@@ -162,7 +162,7 @@ const OrdenesVentaScreen: React.FC = () => {
       <FlatList
         data={cliente.entregas}
         renderItem={renderOrden}
-        keyExtractor={(item) => `${item.ordenVenta}-${item.folio}`}
+        keyExtractor={(item, index) => `${item.ordenVenta}-${item.folio}-${index}`}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>

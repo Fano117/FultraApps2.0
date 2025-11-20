@@ -11,6 +11,7 @@ export type MainTabParamList = {
   Entregas: NavigatorScreenParams<EntregasTabParamList>;
   Profile: undefined;
   Notifications: undefined;
+  TestData: undefined;
 };
 
 export type EntregasTabParamList = {
@@ -22,9 +23,24 @@ export type EntregasStackParamList = {
   ClientesEntregas: undefined;
   OrdenesVenta: { cliente: ClienteEntregaDTO };
   DetalleOrden: { cliente: ClienteEntregaDTO; entrega: EntregaDTO };
-  FormularioEntrega: { clienteCarga: string; entrega: EntregaDTO; tipoRegistro: TipoRegistro };
+  FormularioEntrega: { clienteCarga: string; entrega: EntregaDTO; tipoRegistro: TipoRegistro; geofenceId?: string | null };
   EntregasList: undefined;
   EntregaDetail: { clienteCarga: string; entrega: EntregaDTO };
+  EntregaTracking: {
+    entregaId: number;
+    folio: string;
+    puntoEntrega: { latitud: number; longitud: number };
+    nombreCliente: string;
+  };
+  RutaEntrega: {
+    destino: { latitude: number; longitude: number };
+    cliente: string;
+    direccion: string;
+    ordenVenta: string;
+    geofenceId?: string;
+  };
+  GestionEntregas: undefined;
+  EstadoEntrega: { geofenceId: string };
 };
 
 declare global {

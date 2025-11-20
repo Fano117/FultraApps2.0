@@ -8,6 +8,7 @@ import HomeScreen from '@/screens/home/HomeScreen';
 import ProfileScreen from '@/screens/profile/ProfileScreen';
 import NotificationsScreen from '@/screens/notifications/NotificationsScreen';
 import EntregasTabNavigator from './EntregasTabNavigator';
+import TestDataAdminScreen from '@/screens/TestDataAdminScreen';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -76,6 +77,16 @@ const MainTabNavigator: React.FC = () => {
         component={NotificationsScreen}
         options={{
           tabBarButton: () => null,
+        }}
+      />
+      <Tab.Screen
+        name="TestData"
+        component={TestDataAdminScreen}
+        options={{
+          tabBarLabel: 'Testing',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="flask" size={size} color={color} />
+          ),
         }}
       />
     </Tab.Navigator>

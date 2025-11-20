@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { ClienteEntregaDTO, EntregaSync, EstadoSincronizacion } from '../models';
-import { entregasStorageService, entregasApiService } from '../services';
+import { entregasStorageService, mobileApiService } from '../services';
 
 interface EntregasState {
   clientes: ClienteEntregaDTO[];
@@ -22,14 +22,25 @@ export const fetchEmbarques = createAsyncThunk(
   'entregas/fetchEmbarques',
   async (_, { rejectWithValue }) => {
     try {
-      const clientes = await entregasApiService.fetchEmbarquesEntrega();
-      await entregasStorageService.updateClientesEntrega(clientes);
+      // Usar solo datos locales (mock) sin llamar a la API
+      console.log('[STORE] 📦 Cargando datos mock desde almacenamiento local');
+      const clientes = await entregasStorageService.getClientesEntrega();
+      
+      if (clientes.length === 0) {
+        console.log('[STORE] ℹ️ No hay datos mock. Usa la pantalla "Testing" para generar datos.');
+      } else {
+        console.log(`[STORE] ✅ ${clientes.length} clientes cargados desde almacenamiento local`);
+      }
+      
       return clientes;
     } catch (error: any) {
-      return rejectWithValue(error.message || 'Error al cargar embarques');
+      console.error('[STORE] ❌ Error cargando datos locales:', error);
+      return rejectWithValue(error.message || 'Error al cargar datos locales');
     }
   }
 );
+
+
 
 export const loadLocalData = createAsyncThunk(
   'entregas/loadLocalData',
@@ -52,6 +63,44 @@ export const saveEntregaLocal = createAsyncThunk(
     }
   }
 );
+
+export const actualizarEstadoEntrega = createAsyncThunk(
+  'entregas/actualizarEstado',
+  async ({ id, estado }: { id: string | number; estado: string }, { rejectWithValue }) => {
+    try {
+      console.log(`[STORE] 🔄 Actualizando estado entrega ${id} a ${estado}`);
+      await mobileApiService.actualizarEstado(id, estado);
+      return { id, estado };
+    } catch (error: any) {
+      console.error('[STORE] ❌ Error actualizando estado:', error);
+      return rejectWithValue(error.message || 'Error al actualizar estado');
+    }
+  }
+);
+
+export const confirmarEntrega = createAsyncThunk(
+  'entregas/confirmarEntrega',
+  async (datos: {
+    entregaId: string | number;
+    latitud: number;
+    longitud: number;
+    fechaEntrega: string;
+    nombreReceptor?: string;
+    observaciones?: string;
+    estado: string;
+  }, { rejectWithValue }) => {
+    try {
+      console.log('[STORE] ✅ Confirmando entrega:', datos.entregaId);
+      const result = await mobileApiService.confirmarEntrega(datos);
+      return { entregaId: datos.entregaId, result };
+    } catch (error: any) {
+      console.error('[STORE] ❌ Error confirmando entrega:', error);
+      return rejectWithValue(error.message || 'Error al confirmar entrega');
+    }
+  }
+);
+
+
 
 const entregasSlice = createSlice({
   name: 'entregas',
@@ -112,6 +161,46 @@ const entregasSlice = createSlice({
       })
       .addCase(saveEntregaLocal.fulfilled, (state, action) => {
         state.entregasSync.push(action.payload);
+      })
+      .addCase(actualizarEstadoEntrega.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(actualizarEstadoEntrega.fulfilled, (state, action) => {
+        state.loading = false;
+        // Actualizar el estado en la estructura local si es necesario
+        const { id, estado } = action.payload;
+        state.clientes.forEach(cliente => {
+          cliente.entregas.forEach(entrega => {
+            if (entrega.id?.toString() === id.toString()) {
+              entrega.estado = estado;
+            }
+          });
+        });
+      })
+      .addCase(actualizarEstadoEntrega.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(confirmarEntrega.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(confirmarEntrega.fulfilled, (state, action) => {
+        state.loading = false;
+        // Actualizar el estado de la entrega como completada
+        const { entregaId } = action.payload;
+        state.clientes.forEach(cliente => {
+          cliente.entregas.forEach(entrega => {
+            if (entrega.id?.toString() === entregaId.toString()) {
+              entrega.estado = 'COMPLETADO';
+            }
+          });
+        });
+      })
+      .addCase(confirmarEntrega.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
 
         // Actualizar el estado de la entrega en el array de clientes
         state.clientes = state.clientes.map(cliente => ({

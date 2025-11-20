@@ -18,8 +18,15 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Necesitamos acceso a la cámara para capturar evidencias de entregas",
         "NSPhotoLibraryUsageDescription": "Necesitamos acceso a la galería para seleccionar fotos de evidencias",
-        "NSLocationWhenInUseUsageDescription": "Necesitamos tu ubicación para registrar el lugar de entrega",
-        "NSLocationAlwaysUsageDescription": "Necesitamos tu ubicación para registrar el lugar de entrega"
+        "NSLocationWhenInUseUsageDescription": "Necesitamos tu ubicación para registrar el lugar de entrega y habilitar el tracking durante las entregas",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Necesitamos tu ubicación para registrar el lugar de entrega y habilitar el tracking durante las entregas en segundo plano",
+        "NSLocationAlwaysUsageDescription": "Necesitamos tu ubicación en segundo plano para rastrear entregas en tiempo real y calcular rutas optimizadas",
+        "NSLocationUsageDescription": "Esta aplicación necesita acceso a la ubicación para funcionalidades de entrega y navegación",
+        "NSLocationTemporaryUsageDescriptionDictionary": {
+          "DeliveryTracking": "Necesitamos tu ubicación para rastrear entregas en tiempo real"
+        },
+        "UIBackgroundModes": ["location"],
+        "LSApplicationQueriesSchemes": ["here-route", "here-location"]
       }
     },
     "android": {
@@ -33,7 +40,8 @@
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
         "ACCESS_FINE_LOCATION",
-        "ACCESS_COARSE_LOCATION"
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION"
       ],
       "intentFilters": [
         {
@@ -54,9 +62,14 @@
     },
     "plugins": [
       [
+        "expo-dev-client"
+      ],
+      [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Necesitamos tu ubicación para registrar el lugar de entrega."
+          "locationAlwaysAndWhenInUsePermission": "Necesitamos tu ubicación para registrar el lugar de entrega y habilitar el tracking durante las entregas.",
+          "locationWhenInUsePermission": "Necesitamos tu ubicación para registrar el lugar de entrega.",
+          "locationAlwaysPermission": "Necesitamos tu ubicación en segundo plano para rastrear entregas en tiempo real."
         }
       ],
       [
@@ -69,6 +82,13 @@
         "expo-image-picker",
         {
           "photosPermission": "Necesitamos acceso a la galería para seleccionar fotos de evidencias."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#8B5CF6"
         }
       ]
     ],

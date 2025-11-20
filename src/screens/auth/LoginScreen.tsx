@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { Button, Typography, colors, spacing } from '@/design-system';
-import { authService } from '@/shared/services';
+import { authService, debugService } from '@/shared/services';
 import { useAppDispatch } from '@/shared/hooks';
 import { setAuthenticated, setUser } from '@/shared/store/slices/authSlice';
 
@@ -13,6 +13,7 @@ const { width, height } = Dimensions.get('window');
 const LoginScreen: React.FC = () => {
   const dispatch = useAppDispatch();
   const [loading, setLoading] = useState(false);
+  const [testingConnection, setTestingConnection] = useState(false);
 
   // Animaciones
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -127,6 +128,26 @@ const LoginScreen: React.FC = () => {
   const handleLogin = async () => {
     setLoading(true);
     try {
+      // MODO DESARROLLO: Saltarse autenticación OAuth
+      console.log('Saltando autenticación - MODO DESARROLLO');
+      
+      // Simular un usuario de desarrollo con credenciales del backend
+      const mockUserData = {
+        sub: 'alfredo.gallegos',
+        name: 'Alfredo Gallegos',
+        email: 'alfredo.gallegos@fultra.com',
+        role: 'admin',
+        username: 'alfredo.gallegos'
+      };
+
+      // Establecer estado de autenticación
+      dispatch(setUser(mockUserData));
+      dispatch(setAuthenticated(true));
+
+      // Simular tiempo de carga para mantener la UX
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      /* CÓDIGO ORIGINAL PARA OAUTH - COMENTADO PARA DESARROLLO
       const success = await authService.signIn();
 
       if (success) {
@@ -140,6 +161,7 @@ const LoginScreen: React.FC = () => {
           [{ text: 'Entendido', style: 'default' }]
         );
       }
+      */
     } catch (error: any) {
       console.error('Login error:', error);
 
@@ -161,6 +183,32 @@ const LoginScreen: React.FC = () => {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTestConnection = async () => {
+    setTestingConnection(true);
+    try {
+      await debugService.runAllTests();
+      
+      const connectionResult = await debugService.testConnection();
+      const entregasResult = await debugService.testEntregasEndpoint();
+      
+      const message = `🔗 Conexión: ${connectionResult.success ? '✅ OK' : '❌ Error'}\n📦 Entregas: ${entregasResult.success ? '✅ OK' : '❌ Error'}\n\nURL: http://localhost:5103/api`;
+      
+      Alert.alert(
+        'Prueba de Conexión',
+        message,
+        [{ text: 'Entendido', style: 'default' }]
+      );
+    } catch (error) {
+      Alert.alert(
+        'Error de Prueba',
+        'No se pudo completar la prueba de conexión',
+        [{ text: 'Entendido', style: 'default' }]
+      );
+    } finally {
+      setTestingConnection(false);
     }
   };
 
@@ -333,7 +381,26 @@ const LoginScreen: React.FC = () => {
                   <Ionicons name="log-in" size={24} color={colors.primary[600]} style={styles.buttonIcon} />
                 )}
                 <Typography variant="body1" style={styles.loginButtonText}>
-                  Iniciar Sesión
+                  Entrar (Modo Desarrollo)
+                </Typography>
+              </View>
+            </Button>
+
+            {/* Botón de prueba de conexión - SOLO DESARROLLO */}
+            <Button
+              variant="secondary"
+              size="medium"
+              fullWidth
+              loading={testingConnection}
+              onPress={handleTestConnection}
+              style={styles.testButton}
+            >
+              <View style={styles.buttonContent}>
+                {!testingConnection && (
+                  <MaterialCommunityIcons name="wifi" size={20} color={colors.primary[600]} style={styles.buttonIcon} />
+                )}
+                <Typography variant="body2" style={styles.testButtonText}>
+                  Probar Conexión Backend
                 </Typography>
               </View>
             </Button>
@@ -507,6 +574,17 @@ const styles = StyleSheet.create({
     color: colors.primary[600],
     fontWeight: 'bold',
     fontSize: 18,
+  },
+  testButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    marginTop: spacing[2],
+  },
+  testButtonText: {
+    color: colors.primary[600],
+    fontWeight: '600',
+    fontSize: 14,
   },
   securityContainer: {
     flexDirection: 'row',
