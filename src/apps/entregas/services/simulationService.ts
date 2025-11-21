@@ -580,6 +580,193 @@ class SimulationService {
   get rutaActual() {
     return this.rutaActual$.asObservable();
   }
+  /**
+   * ⭐ NUEVO: Generar datos de simulación en el nuevo formato JSON de la API
+   * 
+   * Genera diferentes escenarios de prueba:
+   * - 'con-coordenadas': Todas las direcciones tienen coordenadas
+   * - 'sin-coordenadas': Ninguna dirección tiene coordenadas (prueba geocodificación)
+   * - 'mixto': Algunas direcciones con coordenadas, otras sin (caso más realista)
+   * - 'direcciones-invalidas': Incluye direcciones que no podrán ser geocodificadas
+   */
+  generarEjemploParaNuevoFormato(
+    tipo: 'con-coordenadas' | 'sin-coordenadas' | 'mixto' | 'direcciones-invalidas' = 'mixto'
+  ): any {
+    const ejemplos = {
+      'con-coordenadas': {
+        folioEmbarque: 'SIM-COORD-2025-001',
+        idRutaHereMaps: null, // Ruta nueva
+        direcciones: [
+          {
+            direccion: 'Av. Constitución 2404, Centro, 64000 Monterrey, N.L.',
+            cliente: 'Empresa Demo SA',
+            latitud: '25.694800',
+            longitud: '-100.310200',
+            cp: '64000',
+            calle: 'Av. Constitución',
+            noExterior: '2404',
+            colonia: 'Centro',
+            municipio: 'Monterrey',
+            estado: 'Nuevo León',
+          },
+          {
+            direccion: 'Calle Morelos 847, Centro, 64000 Monterrey, N.L.',
+            cliente: 'Corporativo Pruebas',
+            latitud: '25.678900',
+            longitud: '-100.324500',
+            cp: '64000',
+            calle: 'Calle Morelos',
+            noExterior: '847',
+            colonia: 'Centro',
+            municipio: 'Monterrey',
+            estado: 'Nuevo León',
+          },
+          {
+            direccion: 'Blvd. Miguel Alemán 1500, 66450 San Nicolás de los Garza, N.L.',
+            cliente: 'Industrias del Norte',
+            latitud: '25.742000',
+            longitud: '-100.295000',
+            cp: '66450',
+            calle: 'Blvd. Miguel Alemán',
+            noExterior: '1500',
+            colonia: 'Residencial Lincoln',
+            municipio: 'San Nicolás de los Garza',
+            estado: 'Nuevo León',
+          },
+        ],
+      },
+      'sin-coordenadas': {
+        folioEmbarque: 'SIM-NOCOORD-2025-002',
+        idRutaHereMaps: null,
+        direcciones: [
+          {
+            direccion: 'Av. Constitución 2404, Centro, 64000 Monterrey, N.L.',
+            cliente: 'Empresa Demo SA',
+            // Sin latitud ni longitud - prueba geocodificación por campos
+            cp: '64000',
+            calle: 'Av. Constitución',
+            noExterior: '2404',
+            colonia: 'Centro',
+            municipio: 'Monterrey',
+            estado: 'Nuevo León',
+          },
+          {
+            direccion: 'Calle Morelos 847, Centro, 64000 Monterrey, N.L.',
+            cliente: 'Corporativo Pruebas',
+            // Sin coordenadas - prueba geocodificación por dirección completa
+            cp: '64000',
+            calle: 'Calle Morelos',
+            noExterior: '847',
+            colonia: 'Centro',
+            municipio: 'Monterrey',
+            estado: 'Nuevo León',
+          },
+        ],
+      },
+      'mixto': {
+        folioEmbarque: 'SIM-MIXTO-2025-003',
+        idRutaHereMaps: 'RUTA-EXISTENTE-12345', // Simular ruta existente
+        direcciones: [
+          {
+            direccion: 'José María Caracas 1310, Guadalupe Victoria, 96520 Coatzacoalcos, Ver.',
+            cliente: 'JUAN PGRAL REYES',
+            latitud: '18.144719522128238', // Con coordenadas
+            longitud: '-94.46089643238795',
+            cp: '96520',
+            calle: 'José María Caracas',
+            noExterior: '1310',
+            colonia: 'Guadalupe Victoria',
+            municipio: 'Coatzacoalcos',
+            estado: 'Veracruz',
+          },
+          {
+            direccion: 'Río Lerma 122, Colinas del Lago, 54744 Cuautitlán Izcalli, Méx.',
+            cliente: 'TRANSPORTES MARVA',
+            // Sin coordenadas - debe geocodificar
+            cp: '54744',
+            calle: 'Río Lerma',
+            noExterior: '122',
+            colonia: 'Colinas del Lago',
+            municipio: 'Cuautitlán Izcalli',
+            estado: 'México',
+          },
+          {
+            direccion: 'C. 7 Sur 5943, Girasol, 72440 Heroica Puebla de Zaragoza, Pue.',
+            cliente: 'TRANSPORTES FABRES',
+            latitud: '19.64295650284401', // Con coordenadas
+            longitud: '-99.22825623421272',
+            cp: '72440',
+            calle: 'C. 7 Sur',
+            noExterior: '5943',
+            colonia: 'Girasol',
+            municipio: 'Heroica Puebla de Zaragoza',
+            estado: 'Puebla',
+          },
+        ],
+      },
+      'direcciones-invalidas': {
+        folioEmbarque: 'SIM-INVALIDAS-2025-004',
+        idRutaHereMaps: null,
+        direcciones: [
+          {
+            direccion: 'Av. Constitución 2404, Centro, 64000 Monterrey, N.L.',
+            cliente: 'Dirección Válida',
+            latitud: '25.694800',
+            longitud: '-100.310200',
+            cp: '64000',
+            calle: 'Av. Constitución',
+            noExterior: '2404',
+            colonia: 'Centro',
+            municipio: 'Monterrey',
+            estado: 'Nuevo León',
+          },
+          {
+            direccion: 'Calle Inexistente 9999, Colonia Ficticia',
+            cliente: 'Dirección Inválida 1',
+            // Coordenadas inválidas
+            latitud: '0',
+            longitud: '0',
+            // Datos insuficientes para geocodificar
+            calle: 'Calle Inexistente',
+            noExterior: '9999',
+          },
+          {
+            direccion: '',
+            cliente: 'Dirección Inválida 2',
+            // Sin datos - debe fallar
+          },
+        ],
+      },
+    };
+
+    const ejemplo = ejemplos[tipo];
+    console.log(`[SIMULATION] 📋 Generando ejemplo '${tipo}':`);
+    console.log(`   Folio: ${ejemplo.folioEmbarque}`);
+    console.log(`   ID Ruta: ${ejemplo.idRutaHereMaps || 'null (nueva)'}`);
+    console.log(`   Direcciones: ${ejemplo.direcciones.length}`);
+
+    return ejemplo;
+  }
+
+  /**
+   * ⭐ NUEVO: Simular respuesta de API con diferentes escenarios
+   * 
+   * Útil para testing y desarrollo sin necesidad del backend
+   */
+  async simularRespuestaAPI(
+    tipo: 'con-coordenadas' | 'sin-coordenadas' | 'mixto' | 'direcciones-invalidas' = 'mixto',
+    delayMs: number = 1000
+  ): Promise<any> {
+    console.log(`[SIMULATION] 🌐 Simulando llamada a API (delay: ${delayMs}ms)...`);
+    
+    // Simular delay de red
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+    
+    const response = this.generarEjemploParaNuevoFormato(tipo);
+    
+    console.log('[SIMULATION] ✅ Respuesta simulada lista');
+    return response;
+  }
 }
 
 export const simulationService = new SimulationService();
