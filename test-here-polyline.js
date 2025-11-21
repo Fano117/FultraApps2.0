@@ -7,11 +7,13 @@ const test = async () => {
   
   const API_KEY = 'GYo3JTyTU2DjUu_dGyaDc2LIZyANv1zL5-Lot729yhw';
   
+  // Request corregido: formato flexpolyline y detalles completos
   const url = `https://router.hereapi.com/v8/routes?` +
     `origin=${origen.lat},${origen.lng}&` +
     `destination=${destino.lat},${destino.lng}&` +
     `transportMode=car&` +
-    `return=polyline,summary&` +
+    `return=summary,polyline,actions,instructions&` +
+    `polyline=flex&` +
     `apikey=${API_KEY}`;
   
   console.log('🔍 Solicitando ruta a HERE Maps...');
