@@ -61,7 +61,6 @@ const DEFAULT_ALMACEN = {
   nombre: 'Almacén Principal',
   latitud: 19.4326, // CDMX Centro (ejemplo)
   longitud: -99.1332,
-  radioGeocerca: 100, // 100 metros
 };
 
 class RouteManagementService {
@@ -158,7 +157,7 @@ class RouteManagementService {
   ): Promise<PuntoInicio> {
     // Configuración del almacén
     const almacen = opciones.ubicacionAlmacen || DEFAULT_ALMACEN;
-    const radioGeocerca = opciones.radioGeocerca || almacen.radioGeocerca || 100;
+    const radioGeocerca = opciones.radioGeocerca || 100;
 
     try {
       // Obtener ubicación GPS actual
@@ -341,14 +340,12 @@ class RouteManagementService {
       const puntoMedio = coordenadas[Math.floor(coordenadas.length / 2)];
       
       // Verificar incidentes críticos
-      const incidents = await hereTrafficService.getTrafficIncidents(
-        puntoMedio.latitude,
-        puntoMedio.longitude,
-        5000 // 5 km de radio
-      );
+      // TODO: Implementar consulta a HERE Traffic Service
+      // const incidents = await hereTrafficService.getTrafficIncidents(...);
+      const incidents: any[] = []; // Placeholder
 
       const incidentesCriticos = incidents.filter(
-        i => i.criticality === 'critical' || i.criticality === 'major'
+        (i: any) => i.criticality === 'critical' || i.criticality === 'major'
       );
 
       const tieneIncidentes = incidents.length > 0;
