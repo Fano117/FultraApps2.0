@@ -7,6 +7,11 @@ export * from './locationService';
 export * from './geofenceService';
 export * from './notificationService';
 
+// New services for API JSON format processing
+export * from './addressValidationService';
+export * from './routeManagementService';
+export * from './deliveryProcessingService';
+
 // HERE Maps Configuration (Mock System)
 export * from './hereMockConfig';
 

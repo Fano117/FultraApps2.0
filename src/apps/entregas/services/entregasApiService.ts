@@ -1,6 +1,8 @@
 import { apiService } from '@/shared/services';
 import { ClienteEntregaDTO, EmbarqueEntregaDTO, EntregaDTO } from '../models';
 import { mockClientesEntrega } from '../mocks/mockData';
+import { ApiDeliveryResponse, EntregasProcesadas } from '../types/api-delivery';
+import { deliveryProcessingService } from './deliveryProcessingService';
 
 // MODO MOCK GLOBAL - Cambiar a false para usar backend real
 const USE_MOCK_DATA = true;
@@ -398,6 +400,86 @@ class EntregasApiService {
       }
 
       return false;
+    }
+  }
+
+  /**
+   * ⭐ NUEVO: Obtener entregas con el nuevo formato JSON de la API
+   * Endpoint: GET /api/Mobile/entregas-v2 (o el endpoint que defina el backend)
+   * 
+   * Este método obtiene las entregas en el nuevo formato que incluye:
+   * - folioEmbarque
+   * - idRutaHereMaps (opcional)
+   * - direcciones[] con coordenadas opcionales y campos desglosados
+   */
+  async fetchEntregasConNuevoFormato(): Promise<ApiDeliveryResponse> {
+    // MODO MOCK
+    if (__DEV__ && USE_MOCK_DATA) {
+      console.log('[ENTREGAS API] 🔧 MODO MOCK: Generando datos en nuevo formato JSON');
+      await simulateNetworkDelay(800);
+      
+      // Generar datos de ejemplo en el nuevo formato
+      const mockResponse: ApiDeliveryResponse = deliveryProcessingService.generarEjemploJSON('mixto');
+      
+      console.log('[ENTREGAS API] ✅ Mock: Retornando embarque', mockResponse.folioEmbarque);
+      console.log(`   ID Ruta: ${mockResponse.idRutaHereMaps || 'null (nueva ruta)'}`);
+      console.log(`   Direcciones: ${mockResponse.direcciones.length}`);
+      
+      return mockResponse;
+    }
+
+    // MODO BACKEND REAL
+    try {
+      console.log('[ENTREGAS API] 🚀 Obteniendo entregas con nuevo formato JSON...');
+      
+      // TODO: Actualizar endpoint cuando el backend esté listo
+      const response = await apiService.get<ApiDeliveryResponse>('/Mobile/entregas-v2');
+      
+      console.log('[ENTREGAS API] ✅ Respuesta recibida:', {
+        folio: response.folioEmbarque,
+        idRuta: response.idRutaHereMaps || 'null',
+        direcciones: response.direcciones.length
+      });
+      
+      return response;
+    } catch (error) {
+      console.error('[ENTREGAS API] ❌ Error obteniendo entregas con nuevo formato:', error);
+      
+      // Fallback a datos mock en caso de error
+      if (__DEV__) {
+        console.warn('[ENTREGAS API] ⚠️ Error en backend, usando datos mock como fallback');
+        return deliveryProcessingService.generarEjemploJSON('mixto');
+      }
+      
+      throw error;
+    }
+  }
+
+  /**
+   * ⭐ NUEVO: Procesar entregas completas con validación y generación de rutas
+   * 
+   * Este método orquesta todo el flujo:
+   * 1. Obtener entregas desde la API
+   * 2. Validar y geocodificar direcciones
+   * 3. Generar o recuperar ruta HERE Maps
+   * 4. Guardar ruta en backend
+   */
+  async procesarEntregasCompletas(): Promise<EntregasProcesadas> {
+    console.log('[ENTREGAS API] 📦 Procesando entregas completas...');
+    
+    try {
+      // Obtener datos desde API
+      const apiResponse = await this.fetchEntregasConNuevoFormato();
+      
+      // Procesar con el servicio de procesamiento
+      const resultado = await deliveryProcessingService.procesarEntregasDesdeAPI(apiResponse);
+      
+      console.log('[ENTREGAS API] ✅ Procesamiento completado:', resultado.mensaje);
+      
+      return resultado.entregas;
+    } catch (error) {
+      console.error('[ENTREGAS API] ❌ Error procesando entregas:', error);
+      throw error;
     }
   }
 }
