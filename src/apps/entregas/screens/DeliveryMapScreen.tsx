@@ -543,19 +543,32 @@ export const DeliveryMapScreen: React.FC = () => {
     console.log(`[DELIVERY MAP] 📍 Simulando con ${rutaParaSimular.length} puntos de ruta`);
     console.log(`[DELIVERY MAP] 📏 Distancia total: ${(rutaOptima.distance / 1000).toFixed(2)} km`);
 
-    // Índices para seguir la ruta
+    // Calcular distancia promedio entre puntos de la ruta
+    const distanciaTotalRuta = rutaOptima.distance; // en metros
+    const numPuntos = rutaParaSimular.length;
+    const distanciaPromedioPorPunto = distanciaTotalRuta / numPuntos;
+
+    // Configuración: avanzar 10000m (10km) por cada repetición del intervalo
+    const metrosPorRepeticion = 10000;
+
+    // Calcular cuántos puntos de ruta debemos saltar por repetición
+    const puntosPorRepeticion = Math.max(1, Math.floor(metrosPorRepeticion / distanciaPromedioPorPunto));
+
+    console.log(`[DELIVERY MAP] 🚀 Velocidad: ${metrosPorRepeticion}m por repetición (~${puntosPorRepeticion} puntos)`);
+
+    // Índice para seguir la ruta
     let currentRouteIndex = 0;
-    let interpolacionProgreso = 0;
 
-    // Velocidad de interpolación (qué tan rápido avanza entre puntos)
-    // Valor más alto = más rápido. 0.05 = avanza 5% entre puntos cada intervalo
-    const velocidadInterpolacion = 0.05;
-
-    // Intervalo de simulación (cada 500ms da un paso)
+    // Intervalo de simulación (cada 500ms da un paso de 10km)
     simulationIntervalRef.current = setInterval(() => {
+      // Avanzar múltiples puntos según la velocidad configurada (10km por repetición)
+      currentRouteIndex += puntosPorRepeticion;
+
       // Verificar si ya llegamos al final de la ruta
       if (currentRouteIndex >= rutaParaSimular.length - 1) {
-        // Llegamos al destino
+        // Llegamos al destino - usar el último punto
+        currentRouteIndex = rutaParaSimular.length - 1;
+
         if (simulationIntervalRef.current) {
           clearInterval(simulationIntervalRef.current);
           simulationIntervalRef.current = null;
@@ -571,32 +584,16 @@ export const DeliveryMapScreen: React.FC = () => {
         return;
       }
 
-      const puntoOrigen = rutaParaSimular[currentRouteIndex];
-      const puntoDestino = rutaParaSimular[currentRouteIndex + 1];
+      const puntoActual = rutaParaSimular[currentRouteIndex];
+      const puntoSiguiente = rutaParaSimular[Math.min(currentRouteIndex + 1, rutaParaSimular.length - 1)];
 
-      // Incrementar progreso de interpolación
-      interpolacionProgreso += velocidadInterpolacion;
-
-      // Si completamos la interpolación entre dos puntos, avanzar al siguiente
-      if (interpolacionProgreso >= 1) {
-        currentRouteIndex++;
-        interpolacionProgreso = 0;
-
-        // Verificar nuevamente si llegamos al final
-        if (currentRouteIndex >= rutaParaSimular.length - 1) {
-          return;
-        }
-      }
-
-      // Calcular posición interpolada entre puntoOrigen y puntoDestino
-      const currentLat = puntoOrigen.latitude +
-        (puntoDestino.latitude - puntoOrigen.latitude) * interpolacionProgreso;
-      const currentLng = puntoOrigen.longitude +
-        (puntoDestino.longitude - puntoOrigen.longitude) * interpolacionProgreso;
+      // Usar directamente el punto actual (sin interpolación para máxima velocidad)
+      const currentLat = puntoActual.latitude;
+      const currentLng = puntoActual.longitude;
 
       // Calcular heading (dirección del movimiento)
-      const dLat = puntoDestino.latitude - puntoOrigen.latitude;
-      const dLng = puntoDestino.longitude - puntoOrigen.longitude;
+      const dLat = puntoSiguiente.latitude - puntoActual.latitude;
+      const dLng = puntoSiguiente.longitude - puntoActual.longitude;
       const heading = Math.atan2(dLng, dLat) * (180 / Math.PI);
 
       const newLocation: LocationUpdate = {
@@ -621,7 +618,7 @@ export const DeliveryMapScreen: React.FC = () => {
         destino.longitude
       );
 
-      console.log(`[DELIVERY MAP] 🚗 Punto ${currentRouteIndex}/${rutaParaSimular.length - 1}, Progreso: ${(interpolacionProgreso * 100).toFixed(0)}%, Distancia restante: ${remainingDistance.toFixed(0)}m`);
+      console.log(`[DELIVERY MAP] 🚗 Punto ${currentRouteIndex}/${rutaParaSimular.length - 1}, Avance: ${(currentRouteIndex * distanciaPromedioPorPunto / 1000).toFixed(1)}km, Distancia restante: ${remainingDistance.toFixed(0)}m`);
 
       // Actualizar estado de autorización manualmente
       const isWithinGeofence = remainingDistance <= 50;

@@ -1,6 +1,6 @@
 /**
  * 🗺️ Route Management Service
- * 
+ *
  * Servicio para gestión de rutas HERE Maps con soporte para:
  * - Verificación de rutas existentes (idRutaHereMaps)
  * - Generación de nuevas rutas
@@ -8,17 +8,38 @@
  * - Punto de partida flexible (almacén o GPS actual)
  * - Geocercas para detección de ubicación en almacén
  * - Guardado de rutas en backend
- * 
+ *
  * Integra con HERE Maps Routing API y servicios de geocerca.
+ *
+ * === CAMBIOS REALIZADOS (2025-01-21) ===
+ *
+ * 1. VERIFICACIÓN DE idRutaHereMaps:
+ *    - Si existe idRutaHereMaps, se pregunta al usuario si desea recalcular
+ *    - Si el usuario elige mantener la ruta, se intenta recuperar del backend
+ *    - Si falla la recuperación o el usuario elige recalcular, se genera nueva ruta
+ *
+ * 2. PUNTO DE PARTIDA FLEXIBLE:
+ *    - Si el chofer está dentro de la geocerca del almacén (configurable, default 100m),
+ *      se usa la ubicación fija del almacén
+ *    - Si está fuera, se usa la ubicación GPS actual y se agrega como punto inicial
+ *    - Fallback al almacén si GPS no disponible
+ *
+ * 3. GENERACIÓN Y GUARDADO DE idRutaHereMaps:
+ *    - Genera nuevo ID con formato RUTA-{timestamp}-{random}
+ *    - Guarda la ruta y metadata en backend para futuras recuperaciones
+ *
+ * 4. COMPATIBILIDAD CON SIMULACIÓN:
+ *    - Todas las funciones soportan modo simulación (confirmarRecalculo: false)
+ *    - Los datos mock se procesan de la misma manera que datos reales
  */
 
 import { Alert } from 'react-native';
 import { routingService, RutaOptima, Ubicacion } from './routingService';
 import { locationTrackingService } from '@/shared/services/locationTrackingService';
-import { 
-  RutaMetadata, 
-  OpcionesProcesamiento, 
-  DireccionValidada 
+import {
+  RutaMetadata,
+  OpcionesProcesamiento,
+  DireccionValidada
 } from '../types/api-delivery';
 import { hereTrafficService } from './hereTrafficService';
 
@@ -39,18 +60,47 @@ export interface PuntoInicio {
 export interface ResultadoGeneracionRuta {
   /** Ruta optimizada generada por HERE Maps */
   ruta: RutaOptima;
-  
+
   /** Metadata de la ruta */
   metadata: RutaMetadata;
-  
+
   /** Punto de inicio usado */
   puntoInicio: PuntoInicio;
-  
+
   /** Indica si es una ruta nueva o recalculada */
   esRutaNueva: boolean;
-  
+
   /** ID de ruta en HERE Maps (nuevo o existente) */
   idRutaHereMaps: string;
+
+  /** Indica si la ruta fue recuperada del backend */
+  rutaRecuperada: boolean;
+
+  /** Indica si hubo cambios sugeridos en la ruta */
+  tieneCambiosSugeridos: boolean;
+
+  /** Razón de los cambios sugeridos (si aplica) */
+  razonCambios?: string;
+}
+
+/**
+ * Resultado de recuperación de ruta del backend
+ */
+export interface RutaRecuperada {
+  ruta: RutaOptima | null;
+  metadata: RutaMetadata | null;
+  exito: boolean;
+  mensaje: string;
+}
+
+/**
+ * Opciones para el análisis de cambios en la ruta
+ */
+export interface AnalisisCambiosRuta {
+  hayNuevasDirecciones: boolean;
+  hayDireccionesEliminadas: boolean;
+  hayDireccionesModificadas: boolean;
+  detallesCambios: string[];
 }
 
 /**
@@ -66,6 +116,21 @@ const DEFAULT_ALMACEN = {
 class RouteManagementService {
   /**
    * Generar o recuperar ruta con validación de idRutaHereMaps
+   *
+   * FLUJO:
+   * 1. Si existe idRutaHereMaps:
+   *    a. Analizar si hay cambios sugeridos (nuevas direcciones, etc.)
+   *    b. Si hay cambios, preguntar al usuario si desea recalcular
+   *    c. Si no hay cambios, intentar recuperar ruta del backend
+   *    d. Si falla recuperación, generar nueva ruta
+   * 2. Si no existe idRutaHereMaps:
+   *    a. Generar nueva ruta
+   *    b. Guardar nuevo idRutaHereMaps
+   *
+   * @param direcciones - Direcciones validadas
+   * @param idRutaHereMapsExistente - ID de ruta existente (puede ser null)
+   * @param opciones - Opciones de procesamiento
+   * @returns ResultadoGeneracionRuta con la ruta y metadata
    */
   async generarORecuperarRuta(
     direcciones: DireccionValidada[],
@@ -73,50 +138,100 @@ class RouteManagementService {
     opciones: OpcionesProcesamiento = {}
   ): Promise<ResultadoGeneracionRuta> {
     console.log('[RouteManagement] 🗺️ Iniciando generación/recuperación de ruta...');
-    
+
     // Filtrar solo direcciones válidas
     const direccionesValidas = direcciones.filter(d => d.esValida && d.coordenadas);
-    
+
     if (direccionesValidas.length === 0) {
       throw new Error('No hay direcciones válidas para generar la ruta');
     }
 
     console.log(`[RouteManagement] 📍 ${direccionesValidas.length} direcciones válidas encontradas`);
 
-    // Determinar punto de inicio
+    // Determinar punto de inicio (almacén o GPS actual)
     const puntoInicio = await this.determinarPuntoInicio(opciones);
     console.log(`[RouteManagement] 📍 Punto de inicio: ${puntoInicio.tipo} (${puntoInicio.nombre})`);
+    console.log(`[RouteManagement] 📍 Dentro de geocerca: ${puntoInicio.dentroDeGeocerca ? 'SÍ' : 'NO'}`);
 
-    // Verificar si existe una ruta previa
+    // Variables de control de flujo
     let debeRecalcular = opciones.forzarRecalculo || false;
     let esRutaNueva = true;
+    let rutaRecuperada = false;
+    let tieneCambiosSugeridos = false;
+    let razonCambios: string | undefined;
+    let ruta: RutaOptima;
 
+    // CASO 1: Existe una ruta previa (idRutaHereMaps)
     if (idRutaHereMapsExistente && !opciones.forzarRecalculo) {
       console.log(`[RouteManagement] 🔍 Ruta existente encontrada: ${idRutaHereMapsExistente}`);
-      
-      // Preguntar al usuario si desea recalcular
-      if (opciones.confirmarRecalculo !== false) {
-        debeRecalcular = await this.confirmarRecalculoConUsuario();
-      }
-      
-      if (!debeRecalcular) {
-        console.log('[RouteManagement] ℹ️ Usuario decidió mantener la ruta existente');
-        // TODO: Aquí podríamos cargar la ruta desde el backend si está disponible
-        // Por ahora, recalculamos de todos modos para tener los datos frescos
-        debeRecalcular = true;
-      }
-      
       esRutaNueva = false;
+
+      // Analizar si hay cambios que sugieran recalcular
+      const analisisCambios = await this.analizarCambiosSugeridos(
+        idRutaHereMapsExistente,
+        direccionesValidas,
+        puntoInicio
+      );
+
+      tieneCambiosSugeridos = analisisCambios.hayNuevasDirecciones ||
+        analisisCambios.hayDireccionesEliminadas ||
+        analisisCambios.hayDireccionesModificadas;
+
+      if (tieneCambiosSugeridos) {
+        razonCambios = analisisCambios.detallesCambios.join(', ');
+        console.log(`[RouteManagement] ⚠️ Cambios detectados: ${razonCambios}`);
+
+        // Preguntar al usuario si desea recalcular (solo si no está en modo simulación)
+        if (opciones.confirmarRecalculo !== false) {
+          debeRecalcular = await this.confirmarRecalculoConCambios(analisisCambios);
+        } else {
+          // En modo simulación, recalcular automáticamente si hay cambios
+          debeRecalcular = true;
+        }
+      } else {
+        // No hay cambios, intentar recuperar la ruta existente
+        console.log('[RouteManagement] ℹ️ No hay cambios detectados, intentando recuperar ruta...');
+
+        const rutaExistente = await this.recuperarRutaDelBackend(idRutaHereMapsExistente);
+
+        if (rutaExistente.exito && rutaExistente.ruta) {
+          console.log('[RouteManagement] ✅ Ruta recuperada del backend exitosamente');
+          rutaRecuperada = true;
+          ruta = rutaExistente.ruta;
+
+          // Retornar ruta recuperada
+          return {
+            ruta,
+            metadata: rutaExistente.metadata || this.construirMetadata(
+              ruta,
+              idRutaHereMapsExistente,
+              puntoInicio,
+              direccionesValidas.length
+            ),
+            puntoInicio,
+            esRutaNueva: false,
+            idRutaHereMaps: idRutaHereMapsExistente,
+            rutaRecuperada: true,
+            tieneCambiosSugeridos: false,
+          };
+        } else {
+          console.log(`[RouteManagement] ⚠️ No se pudo recuperar ruta: ${rutaExistente.mensaje}`);
+          console.log('[RouteManagement] 🔄 Generando nueva ruta...');
+          debeRecalcular = true;
+        }
+      }
     }
 
-    // Calcular ruta con HERE Maps
-    const ruta = await this.calcularRutaMultiparada(
+    // CASO 2: Generar nueva ruta (ruta nueva o recalculación)
+    console.log(`[RouteManagement] 🧮 ${esRutaNueva ? 'Generando nueva ruta' : 'Recalculando ruta'}...`);
+
+    ruta = await this.calcularRutaMultiparada(
       puntoInicio,
       direccionesValidas,
       opciones
     );
 
-    // Generar nuevo ID de ruta si es necesario
+    // Generar nuevo ID de ruta si es nueva o si se recalculó
     const idRutaHereMaps = debeRecalcular || !idRutaHereMapsExistente
       ? this.generarIdRutaHereMaps()
       : idRutaHereMapsExistente;
@@ -124,21 +239,12 @@ class RouteManagementService {
     console.log(`[RouteManagement] ✅ Ruta ${esRutaNueva ? 'nueva' : 'recalculada'} generada: ${idRutaHereMaps}`);
 
     // Construir metadata
-    const metadata: RutaMetadata = {
+    const metadata = this.construirMetadata(
+      ruta,
       idRutaHereMaps,
-      timestamp: new Date(),
-      distanciaTotal: ruta.distance,
-      duracionEstimada: ruta.duration,
-      numeroParadas: direccionesValidas.length,
-      puntoInicio: {
-        latitud: puntoInicio.latitud,
-        longitud: puntoInicio.longitud,
-        tipo: puntoInicio.tipo,
-        nombre: puntoInicio.nombre,
-      },
-      consideraTrafico: true, // HERE Maps siempre considera tráfico en tiempo real
-      optimizada: direccionesValidas.length > 1,
-    };
+      puntoInicio,
+      direccionesValidas.length
+    );
 
     return {
       ruta,
@@ -146,7 +252,127 @@ class RouteManagementService {
       puntoInicio,
       esRutaNueva,
       idRutaHereMaps,
+      rutaRecuperada: false,
+      tieneCambiosSugeridos,
+      razonCambios,
     };
+  }
+
+  /**
+   * Construir metadata de la ruta
+   */
+  private construirMetadata(
+    ruta: RutaOptima,
+    idRutaHereMaps: string,
+    puntoInicio: PuntoInicio,
+    numeroParadas: number
+  ): RutaMetadata {
+    return {
+      idRutaHereMaps,
+      timestamp: new Date(),
+      distanciaTotal: ruta.distance,
+      duracionEstimada: ruta.duration,
+      numeroParadas,
+      puntoInicio: {
+        latitud: puntoInicio.latitud,
+        longitud: puntoInicio.longitud,
+        tipo: puntoInicio.tipo,
+        nombre: puntoInicio.nombre,
+      },
+      consideraTrafico: true,
+      optimizada: numeroParadas > 1,
+    };
+  }
+
+  /**
+   * Analizar si hay cambios que sugieran recalcular la ruta
+   */
+  private async analizarCambiosSugeridos(
+    idRutaExistente: string,
+    direccionesActuales: DireccionValidada[],
+    puntoInicioActual: PuntoInicio
+  ): Promise<AnalisisCambiosRuta> {
+    const detallesCambios: string[] = [];
+
+    // TODO: Recuperar información de la ruta anterior del backend
+    // Por ahora, asumimos que no hay cambios si el ID existe
+    // En producción, se debería comparar con los datos almacenados
+
+    console.log(`[RouteManagement] 🔍 Analizando cambios para ruta: ${idRutaExistente}`);
+    console.log(`[RouteManagement] 📍 Direcciones actuales: ${direccionesActuales.length}`);
+    console.log(`[RouteManagement] 📍 Punto inicio: ${puntoInicioActual.tipo}`);
+
+    // Verificar si el punto de inicio cambió (chofer se movió del almacén)
+    if (puntoInicioActual.tipo === 'gps-actual' && !puntoInicioActual.dentroDeGeocerca) {
+      detallesCambios.push('El punto de inicio ha cambiado (chofer fuera del almacén)');
+    }
+
+    return {
+      hayNuevasDirecciones: false,
+      hayDireccionesEliminadas: false,
+      hayDireccionesModificadas: detallesCambios.length > 0,
+      detallesCambios,
+    };
+  }
+
+  /**
+   * Confirmar con el usuario si desea recalcular cuando hay cambios detectados
+   */
+  private confirmarRecalculoConCambios(analisis: AnalisisCambiosRuta): Promise<boolean> {
+    return new Promise((resolve) => {
+      const mensajeCambios = analisis.detallesCambios.length > 0
+        ? `\n\nCambios detectados:\n• ${analisis.detallesCambios.join('\n• ')}`
+        : '';
+
+      Alert.alert(
+        'Cambios detectados en la ruta',
+        `Se han detectado cambios que podrían afectar la ruta calculada.${mensajeCambios}\n\n¿Deseas recalcular la ruta con las condiciones actuales?`,
+        [
+          {
+            text: 'Mantener ruta actual',
+            onPress: () => resolve(false),
+            style: 'cancel',
+          },
+          {
+            text: 'Recalcular ruta',
+            onPress: () => resolve(true),
+            style: 'default',
+          },
+        ],
+        { cancelable: false }
+      );
+    });
+  }
+
+  /**
+   * Recuperar ruta del backend usando idRutaHereMaps
+   */
+  private async recuperarRutaDelBackend(idRutaHereMaps: string): Promise<RutaRecuperada> {
+    try {
+      console.log(`[RouteManagement] 📡 Intentando recuperar ruta del backend: ${idRutaHereMaps}`);
+
+      // TODO: Implementar llamada real al endpoint del backend
+      // const response = await apiService.get(`/mobile/embarques/ruta/${idRutaHereMaps}`);
+
+      // Por ahora, simulamos que la recuperación no está disponible
+      // En producción, esto debería conectar con el backend real
+      console.log('[RouteManagement] ℹ️ Recuperación de ruta del backend no implementada aún');
+
+      return {
+        ruta: null,
+        metadata: null,
+        exito: false,
+        mensaje: 'Función de recuperación de ruta pendiente de implementación',
+      };
+    } catch (error) {
+      console.error('[RouteManagement] ❌ Error recuperando ruta del backend:', error);
+      return {
+        ruta: null,
+        metadata: null,
+        exito: false,
+        mensaje: error instanceof Error ? error.message : 'Error desconocido',
+      };
+    }
   }
 
   /**
@@ -254,32 +480,8 @@ class RouteManagementService {
   }
 
   /**
-   * Confirmar con el usuario si desea recalcular la ruta
-   */
-  private confirmarRecalculoConUsuario(): Promise<boolean> {
-    return new Promise((resolve) => {
-      Alert.alert(
-        'Ruta existente',
-        'Ya existe una ruta calculada para este embarque. ¿Deseas recalcular la ruta con las condiciones actuales de tráfico?',
-        [
-          {
-            text: 'Mantener ruta actual',
-            onPress: () => resolve(false),
-            style: 'cancel',
-          },
-          {
-            text: 'Recalcular ruta',
-            onPress: () => resolve(true),
-            style: 'default',
-          },
-        ],
-        { cancelable: false }
-      );
-    });
-  }
-
-  /**
    * Generar nuevo ID de ruta HERE Maps
+   * Formato: RUTA-{timestamp}-{random}
    */
   private generarIdRutaHereMaps(): string {
     // Formato: RUTA-{timestamp}-{random}

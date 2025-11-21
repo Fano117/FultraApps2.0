@@ -3,7 +3,7 @@
  * Permite cargar, limpiar y simular datos realistas para testing
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -14,14 +14,95 @@ import {
   Alert,
   Switch,
 } from 'react-native';
-import { testDataService } from '../shared/services/testDataService';
-import { TestDataConfig } from '../shared/models/testData.models';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useDispatch } from 'react-redux';
+import { deliveryProcessingService, entregasStorageService } from '../apps/entregas/services';
+import { loadLocalData } from '../apps/entregas/store/entregasSlice';
+import { ClienteEntregaDTO, EntregaDTO, EstadoEntrega } from '../apps/entregas/models';
+import { DireccionValidada } from '../apps/entregas/types/api-delivery';
+import {
+  TipoEscenarioSimulacion,
+  descripcionesEscenarios
+} from '../apps/entregas/mocks/mockData';
+import { EntregasStackParamList } from '../navigation/types';
+import { AppDispatch } from '../shared/store';
+
+type NavigationProp = NativeStackNavigationProp<EntregasStackParamList>;
+
+/**
+ * Convierte DireccionValidada[] a ClienteEntregaDTO[]
+ * Agrupa las direcciones por cliente y crea la estructura esperada por el sistema
+ */
+function convertirDireccionesAClientes(
+  direcciones: DireccionValidada[],
+  folioEmbarque: string
+): ClienteEntregaDTO[] {
+  // Agrupar por cliente
+  const clientesMap = new Map<string, ClienteEntregaDTO>();
+
+  direcciones.forEach((direccion, index) => {
+    if (!direccion.esValida || !direccion.coordenadas) return;
+
+    const clienteNombre = direccion.original.cliente;
+    const clienteKey = clienteNombre.toUpperCase().replace(/\s+/g, '_');
+
+    // Crear entrega para esta dirección
+    const entrega: EntregaDTO = {
+      id: index + 1,
+      ordenVenta: `OV-${folioEmbarque}-${index + 1}`,
+      folio: `${folioEmbarque}-${String(index + 1).padStart(3, '0')}`,
+      tipoEntrega: 'ENTREGA',
+      estado: EstadoEntrega.PENDIENTE,
+      articulos: [
+        {
+          id: index + 1,
+          nombreOrdenVenta: `OV-${folioEmbarque}-${index + 1}`,
+          producto: `Producto ${index + 1}`,
+          cantidadProgramada: 10,
+          cantidadEntregada: 0,
+          restante: 10,
+          peso: 5.0,
+          unidadMedida: 'KG',
+          descripcion: `Artículo de prueba para ${clienteNombre}`,
+        },
+      ],
+      cargaCuentaCliente: `CARGA-${clienteKey}`,
+    };
+
+    if (clientesMap.has(clienteKey)) {
+      // Agregar entrega al cliente existente
+      clientesMap.get(clienteKey)!.entregas.push(entrega);
+    } else {
+      // Crear nuevo cliente
+      const nuevoCliente: ClienteEntregaDTO = {
+        cliente: clienteNombre,
+        cuentaCliente: `CTA-${clienteKey}`,
+        carga: `CARGA-${folioEmbarque}`,
+        direccionEntrega: direccion.original.direccion,
+        latitud: String(direccion.coordenadas.latitud),
+        longitud: String(direccion.coordenadas.longitud),
+        entregas: [entrega],
+      };
+      clientesMap.set(clienteKey, nuevoCliente);
+    }
+  });
+
+  return Array.from(clientesMap.values());
+}
 
 export default function TestDataAdminScreen() {
+  const navigation = useNavigation<NavigationProp>();
+  const dispatch = useDispatch<AppDispatch>();
   const [loading, setLoading] = useState(false);
   const [hasData, setHasData] = useState(false);
   const [dataInfo, setDataInfo] = useState<any>(null);
   const [simulatingGPS, setSimulatingGPS] = useState(false);
+
+  // Estado para simulación de API JSON
+  const [simulandoAPI, setSimulandoAPI] = useState(false);
+  const [escenarioSeleccionado, setEscenarioSeleccionado] = useState<TipoEscenarioSimulacion>('con-coordenadas-y-ruta');
+  const [resultadoSimulacion, setResultadoSimulacion] = useState<any>(null);
 
   // Configuración
   const [numClientes, setNumClientes] = useState(5);
@@ -31,74 +112,99 @@ export default function TestDataAdminScreen() {
   const [ubicacionZacatecas, setUbicacionZacatecas] = useState(false);
   const [ubicacionMonterrey, setUbicacionMonterrey] = useState(false);
 
-  useEffect(() => {
-    checkExistingData();
-  }, []);
-
-  const checkExistingData = async () => {
-    const exists = await testDataService.hasTestDataLoaded();
-    setHasData(exists);
-
-    if (exists) {
-      const info = await testDataService.getTestDataInfo();
-      setDataInfo(info);
-    }
-  };
-
+  /**
+   * Cargar datos de prueba usando el escenario de simulación seleccionado
+   * Utiliza el nuevo formato JSON de la API
+   */
   const handleLoadData = async () => {
-    let ubicacion = 'Guadalajara, Jal.';
-    if (ubicacionZacatecas) ubicacion = 'Zacatecas, Zac.';
-    if (ubicacionMonterrey) ubicacion = 'Monterrey, NL';
+    const escenarioInfo = descripcionesEscenarios[escenarioSeleccionado];
 
     Alert.alert(
       'Cargar Datos de Prueba',
-      `Se generarán:\n• ${numClientes} clientes en ${ubicacion}\n• ${numClientes * numEntregas} entregas\n• ${generarRuta ? 'Rutas GPS' : 'Sin rutas'}\n\n¿Continuar?`,
+      `Se cargarán los datos del escenario:\n\n"${escenarioInfo}"\n\n¿Continuar?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Cargar',
           onPress: async () => {
             setLoading(true);
+            setResultadoSimulacion(null);
+
             try {
-              const config: TestDataConfig = {
-                numClientes,
-                numEntregasPorCliente: numEntregas,
-                fechaInicio: new Date(),
-                generarRutaGPS: generarRuta,
-                simularEstados,
-              };
+              console.log('='.repeat(80));
+              console.log(`📥 Cargando datos: ${escenarioSeleccionado}`);
+              console.log(`📝 Descripción: ${escenarioInfo}`);
+              console.log('='.repeat(80));
 
-              let result;
-              if (ubicacionZacatecas) {
-                result = await testDataService.loadTestDataZacatecas(config);
-              } else if (ubicacionMonterrey) {
-                if (testDataService.loadTestDataMonterrey) {
-                  result = await testDataService.loadTestDataMonterrey(config);
-                } else {
-                  Alert.alert('No implementado', 'La función de datos de Monterrey no está disponible.');
-                  setLoading(false);
-                  return;
+              const resultado = await deliveryProcessingService.procesarEscenarioSimulacion(
+                escenarioSeleccionado,
+                {
+                  confirmarRecalculo: false,
+                  radioGeocerca: 100,
                 }
-              } else {
-                result = await testDataService.loadTestData(config);
-              }
+              );
 
-              if (result && result.success) {
+              // Convertir direcciones validadas a formato ClienteEntregaDTO
+              const clientesDTO = convertirDireccionesAClientes(
+                resultado.entregas.direcciones,
+                resultado.entregas.folioEmbarque
+              );
+
+              console.log(`📦 Convertidos ${clientesDTO.length} clientes para persistencia`);
+
+              // Guardar en AsyncStorage para persistencia
+              await entregasStorageService.saveClientesEntrega(clientesDTO);
+              console.log('💾 Clientes guardados en AsyncStorage');
+
+              // Actualizar Redux store para que otras pantallas vean los datos
+              await dispatch(loadLocalData());
+              console.log('🔄 Redux store actualizado');
+
+              setResultadoSimulacion(resultado);
+              setHasData(true);
+              setDataInfo({
+                results: {
+                  clientesCreados: clientesDTO.length,
+                  entregasCreadas: clientesDTO.reduce((acc, c) => acc + c.entregas.length, 0),
+                  rutasGeneradas: 1,
+                },
+                timestamp: new Date().toISOString(),
+              });
+
+              if (resultado.exito) {
                 Alert.alert(
                   '✅ Datos Cargados',
-                  `Ubicación: ${ubicacion}\nClientes: ${result.data.clientesCreados}\nEntregas: ${result.data.entregasCreadas}\nRutas: ${result.data.rutasGeneradas}\n\nTiempo: ${result.data.tiempoEjecucion}ms`,
-                  [{ text: 'OK' }]
+                  `Folio: ${resultado.entregas.folioEmbarque}\n` +
+                  `Clientes: ${clientesDTO.length}\n` +
+                  `Entregas: ${clientesDTO.reduce((acc, c) => acc + c.entregas.length, 0)}\n` +
+                  `Distancia: ${(resultado.ruta.metadata.distanciaTotal / 1000).toFixed(2)} km\n` +
+                  `Duración: ${Math.round(resultado.ruta.metadata.duracionEstimada / 60)} min\n\n` +
+                  `Los datos se guardaron y estarán disponibles en "Entregas Pendientes"`,
+                  [
+                    { text: 'Cerrar', style: 'cancel' },
+                    {
+                      text: 'Ver en Mapa',
+                      onPress: () => {
+                        navigation.navigate('RutaMultiParada', {
+                          folioEmbarque: resultado.entregas.folioEmbarque,
+                          idRutaHereMaps: resultado.entregas.idRutaHereMaps,
+                          direcciones: resultado.entregas.direcciones,
+                          paradaActualIndex: 0,
+                        });
+                      },
+                    },
+                  ]
                 );
-                await checkExistingData();
               } else {
                 Alert.alert(
-                  '❌ Error',
-                  result?.message || 'Error desconocido',
+                  '⚠️ Datos Cargados con Advertencias',
+                  resultado.mensaje,
                   [{ text: 'OK' }]
                 );
               }
             } catch (error: any) {
-              Alert.alert('Error', error.message);
+              console.error('❌ Error cargando datos:', error);
+              Alert.alert('Error', error.message || 'Error desconocido');
             } finally {
               setLoading(false);
             }
@@ -108,30 +214,35 @@ export default function TestDataAdminScreen() {
     );
   };
 
-  const handleClearData = async () => {
+  /**
+   * Limpiar datos de prueba cargados localmente
+   */
+  const handleClearData = () => {
     Alert.alert(
       '⚠️ Limpiar Datos',
-      'Esto eliminará TODOS los datos de prueba del backend.\n\n¿Estás seguro?',
+      'Esto eliminará los datos de prueba cargados.\n\n¿Estás seguro?',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Eliminar',
           style: 'destructive',
           onPress: async () => {
-            setLoading(true);
             try {
-              const result = await testDataService.clearTestData();
+              // Limpiar AsyncStorage
+              await entregasStorageService.clearAllData();
+              console.log('🗑️ AsyncStorage limpiado');
 
-              if (result.success) {
-                Alert.alert('✅ Datos Eliminados', 'Todos los datos de prueba han sido eliminados');
-                await checkExistingData();
-              } else {
-                Alert.alert('❌ Error', result.message);
-              }
+              // Actualizar Redux store
+              await dispatch(loadLocalData());
+              console.log('🔄 Redux store actualizado');
+
+              setResultadoSimulacion(null);
+              setHasData(false);
+              setDataInfo(null);
+              Alert.alert('✅ Datos Eliminados', 'Los datos de prueba han sido eliminados de todas las pantallas');
             } catch (error: any) {
-              Alert.alert('Error', error.message);
-            } finally {
-              setLoading(false);
+              console.error('❌ Error limpiando datos:', error);
+              Alert.alert('Error', 'No se pudieron eliminar los datos');
             }
           },
         },
@@ -158,6 +269,82 @@ export default function TestDataAdminScreen() {
       Alert.alert('✅ Completado', 'Simulación GPS finalizada');
     }, 5000);
   };
+
+  /**
+   * Ejecutar simulación de procesamiento de entregas con el nuevo formato JSON
+   */
+  const handleSimularAPIJSON = async () => {
+    setSimulandoAPI(true);
+    setResultadoSimulacion(null);
+
+    try {
+      console.log('='.repeat(80));
+      console.log(`🧪 Iniciando simulación: ${escenarioSeleccionado}`);
+      console.log(`📝 Descripción: ${descripcionesEscenarios[escenarioSeleccionado]}`);
+      console.log('='.repeat(80));
+
+      const resultado = await deliveryProcessingService.procesarEscenarioSimulacion(
+        escenarioSeleccionado,
+        {
+          confirmarRecalculo: false, // No mostrar diálogos en simulación
+          radioGeocerca: 100,
+        }
+      );
+
+      setResultadoSimulacion(resultado);
+
+      if (resultado.exito) {
+        Alert.alert(
+          '✅ Simulación Exitosa',
+          `Folio: ${resultado.entregas.folioEmbarque}\n` +
+          `ID Ruta: ${resultado.ruta.idRutaHereMaps}\n` +
+          `Direcciones válidas: ${resultado.entregas.direccionesValidas}/${resultado.entregas.direcciones.length}\n` +
+          `Distancia: ${(resultado.ruta.metadata.distanciaTotal / 1000).toFixed(2)} km\n` +
+          `Duración: ${Math.round(resultado.ruta.metadata.duracionEstimada / 60)} min`,
+          [
+            { text: 'Cerrar', style: 'cancel' },
+            {
+              text: 'Ver en Mapa',
+              onPress: () => {
+                // Navegar a la pantalla de ruta multi-parada
+                navigation.navigate('RutaMultiParada', {
+                  folioEmbarque: resultado.entregas.folioEmbarque,
+                  idRutaHereMaps: resultado.entregas.idRutaHereMaps,
+                  direcciones: resultado.entregas.direcciones,
+                  paradaActualIndex: 0,
+                });
+              },
+            },
+          ]
+        );
+      } else {
+        Alert.alert(
+          '⚠️ Simulación con Advertencias',
+          resultado.mensaje,
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error: any) {
+      console.error('❌ Error en simulación:', error);
+      Alert.alert(
+        '❌ Error en Simulación',
+        error.message || 'Error desconocido durante la simulación',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setSimulandoAPI(false);
+    }
+  };
+
+  // Lista de escenarios disponibles
+  const escenariosDisponibles: TipoEscenarioSimulacion[] = [
+    'con-coordenadas-y-ruta',
+    'sin-coordenadas',
+    'mixto',
+    'ruta-existente-fuera-almacen',
+    'coordenadas-invalidas',
+    'multiples-paradas',
+  ];
 
   return (
     <ScrollView style={styles.container}>
@@ -377,41 +564,81 @@ export default function TestDataAdminScreen() {
 
             <TouchableOpacity
               style={[styles.button, styles.buttonDanger, loading && styles.buttonDisabled]}
-              onPress={async () => {
-                Alert.alert(
-                  '⚠️ Limpiar Datos',
-                  'Esto eliminará TODOS los datos de prueba del backend. ¿Estás seguro?',
-                  [
-                    { text: 'Cancelar', style: 'cancel' },
-                    {
-                      text: 'Eliminar',
-                      style: 'destructive',
-                      onPress: async () => {
-                        setLoading(true);
-                        try {
-                          const result = await testDataService.clearTestData();
-                          if (result.success) {
-                            Alert.alert('✅ Datos Eliminados', 'Todos los datos de prueba han sido eliminados');
-                            await checkExistingData();
-                          } else {
-                            Alert.alert('❌ Error', result.message);
-                          }
-                        } catch (error: any) {
-                          Alert.alert('Error', error.message);
-                        } finally {
-                          setLoading(false);
-                        }
-                      },
-                    },
-                  ]
-                );
-              }}
+              onPress={handleClearData}
               disabled={loading}
             >
               <Text style={styles.buttonIcon}>🗑️</Text>
               <Text style={[styles.buttonText, styles.buttonTextDanger]}>Limpiar Datos</Text>
             </TouchableOpacity>
           </>
+        )}
+      </View>
+
+      {/* Simulación API JSON */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>🧪 Simulación API JSON</Text>
+        <Text style={styles.infoText}>
+          Probar el procesamiento de entregas con el nuevo formato JSON de la API.
+          Selecciona un escenario y ejecuta la simulación.
+        </Text>
+
+        <View style={styles.escenarioContainer}>
+          <Text style={styles.configLabel}>Escenario de Prueba:</Text>
+          <View style={styles.escenarioList}>
+            {escenariosDisponibles.map((escenario) => (
+              <TouchableOpacity
+                key={escenario}
+                style={[
+                  styles.escenarioItem,
+                  escenarioSeleccionado === escenario && styles.escenarioItemSelected,
+                ]}
+                onPress={() => setEscenarioSeleccionado(escenario)}
+                disabled={simulandoAPI}
+              >
+                <Text
+                  style={[
+                    styles.escenarioText,
+                    escenarioSeleccionado === escenario && styles.escenarioTextSelected,
+                  ]}
+                >
+                  {descripcionesEscenarios[escenario]}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={[
+            styles.button,
+            styles.buttonSimulacion,
+            simulandoAPI && styles.buttonDisabled,
+          ]}
+          onPress={handleSimularAPIJSON}
+          disabled={simulandoAPI}
+        >
+          {simulandoAPI ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <>
+              <Text style={styles.buttonIcon}>🚀</Text>
+              <Text style={styles.buttonText}>Ejecutar Simulación</Text>
+            </>
+          )}
+        </TouchableOpacity>
+
+        {resultadoSimulacion && (
+          <View style={styles.resultadoContainer}>
+            <Text style={styles.resultadoTitle}>
+              {resultadoSimulacion.exito ? '✅ Último Resultado' : '⚠️ Último Resultado'}
+            </Text>
+            <Text style={styles.resultadoText}>
+              Folio: {resultadoSimulacion.entregas.folioEmbarque}{'\n'}
+              Ruta ID: {resultadoSimulacion.ruta.idRutaHereMaps}{'\n'}
+              Válidas: {resultadoSimulacion.entregas.direccionesValidas}/{resultadoSimulacion.entregas.direcciones.length}{'\n'}
+              Distancia: {(resultadoSimulacion.ruta.metadata.distanciaTotal / 1000).toFixed(2)} km
+            </Text>
+          </View>
         )}
       </View>
 
@@ -642,5 +869,55 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#059669',
     lineHeight: 16,
+  },
+  // Estilos para simulación API JSON
+  escenarioContainer: {
+    marginTop: 16,
+    marginBottom: 16,
+  },
+  escenarioList: {
+    marginTop: 8,
+  },
+  escenarioItem: {
+    padding: 12,
+    marginBottom: 8,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  escenarioItemSelected: {
+    backgroundColor: '#EEF2FF',
+    borderColor: '#6B46C1',
+  },
+  escenarioText: {
+    fontSize: 13,
+    color: '#666',
+  },
+  escenarioTextSelected: {
+    color: '#6B46C1',
+    fontWeight: '600',
+  },
+  buttonSimulacion: {
+    backgroundColor: '#10B981',
+  },
+  resultadoContainer: {
+    marginTop: 12,
+    padding: 12,
+    backgroundColor: '#F0FDF4',
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#10B981',
+  },
+  resultadoTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#059669',
+    marginBottom: 8,
+  },
+  resultadoText: {
+    fontSize: 12,
+    color: '#065F46',
+    lineHeight: 18,
   },
 });

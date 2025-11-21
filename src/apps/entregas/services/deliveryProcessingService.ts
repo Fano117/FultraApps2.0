@@ -1,9 +1,9 @@
 /**
  * 📦 Delivery Processing Service
- * 
+ *
  * Servicio orquestador principal para el procesamiento completo de entregas
  * según el nuevo formato JSON de la API.
- * 
+ *
  * Flujo completo:
  * 1. Recibir JSON de la API (folioEmbarque, idRutaHereMaps, direcciones[])
  * 2. Validar y geocodificar todas las direcciones (3 niveles de fallback)
@@ -12,11 +12,28 @@
  * 5. Verificar incidentes de tráfico
  * 6. Guardar ruta en backend
  * 7. Notificar al usuario sobre direcciones inválidas
- * 
+ *
  * Este servicio integra:
  * - addressValidationService: Validación de direcciones
  * - routeManagementService: Gestión de rutas
  * - hereTrafficService: Información de tráfico
+ *
+ * === CAMBIOS REALIZADOS (2025-01-21) ===
+ *
+ * 1. SOPORTE COMPLETO PARA NUEVO FORMATO JSON:
+ *    - folioEmbarque: Identificador único del embarque
+ *    - idRutaHereMaps: ID de ruta existente (puede ser null)
+ *    - direcciones[]: Array con campos desglosados y coordenadas opcionales
+ *
+ * 2. SISTEMA DE SIMULACIÓN MEJORADO:
+ *    - Múltiples escenarios predefinidos
+ *    - Soporte para probar diferentes casos de datos
+ *    - Compatible con modo desarrollo sin backend
+ *
+ * 3. INTEGRACIÓN CON routeManagementService ACTUALIZADO:
+ *    - Verificación de idRutaHereMaps existente
+ *    - Confirmación de usuario para recálculo
+ *    - Punto de partida flexible (almacén/GPS)
  */
 
 import { Alert } from 'react-native';
@@ -209,20 +226,51 @@ class DeliveryProcessingService {
 
   /**
    * Procesar entregas en modo simulación (para desarrollo)
+   *
+   * @param ejemploJSON - Datos de la API (real o mock)
+   * @param opciones - Opciones de procesamiento
+   * @param mostrarDialogos - Si es true, muestra diálogos de confirmación
    */
   async procesarEntregasSimuladas(
     ejemploJSON: ApiDeliveryResponse,
-    opciones: OpcionesProcesamiento = {}
+    opciones: OpcionesProcesamiento = {},
+    mostrarDialogos: boolean = false
   ): Promise<ResultadoProcesamiento> {
     console.log('[DeliveryProcessing] 🧪 MODO SIMULACIÓN');
-    
+    console.log(`[DeliveryProcessing] 📋 Folio: ${ejemploJSON.folioEmbarque}`);
+    console.log(`[DeliveryProcessing] 🗺️ ID Ruta: ${ejemploJSON.idRutaHereMaps || 'NUEVA'}`);
+    console.log(`[DeliveryProcessing] 📍 Direcciones: ${ejemploJSON.direcciones.length}`);
+
     // Agregar flag de simulación a las opciones
-    const opcionesSimulacion = {
+    const opcionesSimulacion: OpcionesProcesamiento = {
       ...opciones,
-      confirmarRecalculo: false, // No mostrar diálogos en simulación
+      confirmarRecalculo: mostrarDialogos, // Controlar diálogos según parámetro
     };
 
     return await this.procesarEntregasDesdeAPI(ejemploJSON, opcionesSimulacion);
+  }
+
+  /**
+   * Procesar entregas usando un escenario de simulación predefinido
+   *
+   * @param tipoEscenario - Tipo de escenario a simular
+   * @param opciones - Opciones adicionales de procesamiento
+   */
+  async procesarEscenarioSimulacion(
+    tipoEscenario: 'con-coordenadas-y-ruta' | 'sin-coordenadas' | 'mixto' | 'ruta-existente-fuera-almacen' | 'coordenadas-invalidas' | 'multiples-paradas',
+    opciones: OpcionesProcesamiento = {}
+  ): Promise<ResultadoProcesamiento> {
+    // Importar dinámicamente para evitar dependencias circulares
+    const { escenariosMock, descripcionesEscenarios } = await import('../mocks/mockData');
+
+    const escenario = escenariosMock[tipoEscenario];
+    const descripcion = descripcionesEscenarios[tipoEscenario];
+
+    console.log('='.repeat(80));
+    console.log(`[DeliveryProcessing] 🧪 SIMULACIÓN: ${descripcion}`);
+    console.log('='.repeat(80));
+
+    return await this.procesarEntregasSimuladas(escenario, opciones);
   }
 
   /**
@@ -284,9 +332,11 @@ class DeliveryProcessingService {
 
   /**
    * Generar datos de ejemplo para simulación
+   * @deprecated Usar procesarEscenarioSimulacion() o importar desde mocks/mockData
    */
   generarEjemploJSON(tipo: 'con-coordenadas' | 'sin-coordenadas' | 'mixto' = 'mixto'): ApiDeliveryResponse {
-    const ejemplos = {
+    // Mapear tipos legacy a nuevos escenarios
+    const mapeoTipos: Record<string, ApiDeliveryResponse> = {
       'con-coordenadas': {
         folioEmbarque: 'SIM-CON-COORD-001',
         idRutaHereMaps: null,
@@ -345,7 +395,7 @@ class DeliveryProcessingService {
       },
       'mixto': {
         folioEmbarque: 'M1234-2345653',
-        idRutaHereMaps: 'ID-1234',
+        idRutaHereMaps: 'RUTA-1705849200000-ABC123',
         direcciones: [
           {
             direccion: 'José María Caracas 1310, Guadalupe Victoria, 96520 Coatzacoalcos, Ver.',
@@ -372,8 +422,8 @@ class DeliveryProcessingService {
           {
             direccion: 'C. 7 Sur 5943, Girasol, 72440 Heroica Puebla de Zaragoza, Pue.',
             cliente: 'TRANSPORTES FABRES',
-            latitud: '19.64295650284401',
-            longitud: '-99.22825623421272',
+            latitud: '19.04295650284401',
+            longitud: '-98.22825623421272',
             cp: '72440',
             calle: 'C. 7 Sur',
             noExterior: '5943',
@@ -385,7 +435,29 @@ class DeliveryProcessingService {
       },
     };
 
-    return ejemplos[tipo];
+    return mapeoTipos[tipo];
+  }
+
+  /**
+   * Obtener lista de escenarios de simulación disponibles
+   */
+  async obtenerEscenariosDisponibles(): Promise<Array<{
+    tipo: string;
+    descripcion: string;
+    folioEmbarque: string;
+    tieneRutaExistente: boolean;
+    numeroDirecciones: number;
+  }>> {
+    const { obtenerTodosLosEscenarios } = await import('../mocks/mockData');
+    const escenarios = obtenerTodosLosEscenarios();
+
+    return escenarios.map(e => ({
+      tipo: e.tipo,
+      descripcion: e.descripcion,
+      folioEmbarque: e.datos.folioEmbarque,
+      tieneRutaExistente: !!e.datos.idRutaHereMaps,
+      numeroDirecciones: e.datos.direcciones.length,
+    }));
   }
 }
 

@@ -12,7 +12,16 @@
       "Bash(curl:*)",
       "Bash(echo:*)",
       "Bash(npm config set:*)",
-      "Bash(npm list:*)"
+      "Bash(npm list:*)",
+      "Bash(del \"c:\\FanoApps\\FultraApp2.0\\src\\screens\\EntregaTrackingScreen.tsx\")",
+      "Bash(del \"c:\\FanoApps\\FultraApp2.0\\src\\apps\\entregas\\screens\\MapRutaScreen.tsx\")",
+      "Bash(taskkill:*)",
+      "Bash(npx expo start --port 8082 --clear)",
+      "Bash(ipconfig:*)",
+      "Bash(npx expo start:*)",
+      "Bash(findstr:*)",
+      "Bash(nul)",
+      "Bash(timeout /t 2 /nobreak)"
     ],
     "deny": [],
     "ask": []

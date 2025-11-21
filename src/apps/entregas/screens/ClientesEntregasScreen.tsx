@@ -250,7 +250,22 @@ const ClientesEntregasScreen: React.FC = () => {
         </View>
       )}
       <View style={styles.header}>
-        <Typography variant="h5">Clientes - Entregas</Typography>
+        <Typography variant="h5" style={styles.headerTitle}>Entregas</Typography>
+
+        {/* Selector de vista */}
+        <View style={styles.viewSelector}>
+          <TouchableOpacity
+            style={styles.viewButton}
+            onPress={() => navigation.navigate('EntregasRutas')}
+          >
+            <Ionicons name="map" size={18} color={colors.primary[600]} />
+            <Typography variant="body2" style={styles.viewButtonText}>Rutas</Typography>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.viewButton, styles.viewButtonActive]}>
+            <Ionicons name="people" size={18} color={colors.white} />
+            <Typography variant="body2" style={styles.viewButtonTextActive}>Clientes</Typography>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.estadisticasContainer}>
@@ -297,13 +312,39 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.secondary,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     padding: spacing[4],
     backgroundColor: colors.white,
     borderBottomWidth: 1,
     borderBottomColor: colors.border.light,
+  },
+  headerTitle: {
+    fontWeight: 'bold',
+    marginBottom: spacing[3],
+  },
+  viewSelector: {
+    flexDirection: 'row',
+    backgroundColor: colors.neutral[100],
+    borderRadius: borderRadius.lg,
+    padding: spacing[1],
+  },
+  viewButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing[2],
+    paddingHorizontal: spacing[3],
+    borderRadius: borderRadius.md,
+    gap: spacing[1],
+  },
+  viewButtonActive: {
+    backgroundColor: colors.primary[600],
+  },
+  viewButtonText: {
+    color: colors.primary[600],
+  },
+  viewButtonTextActive: {
+    color: colors.white,
   },
   estadisticasContainer: {
     flexDirection: 'row',

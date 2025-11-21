@@ -1,17 +1,18 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { EntregasStackParamList } from './types';
+import EntregasRutasScreen from '@/apps/entregas/screens/EntregasRutasScreen';
 import ClientesEntregasScreen from '@/apps/entregas/screens/ClientesEntregasScreen';
 import OrdenesVentaScreen from '@/apps/entregas/screens/OrdenesVentaScreen';
 import DetalleOrdenScreen from '@/apps/entregas/screens/DetalleOrdenScreen';
 import FormularioEntregaScreen from '@/apps/entregas/screens/FormularioEntregaScreen';
 import EntregasListScreen from '@/apps/entregas/screens/EntregasListScreen';
 import EntregaDetailScreen from '@/apps/entregas/screens/EntregaDetailScreen';
-import EntregaTrackingScreen from '@/screens/EntregaTrackingScreen';
 import { DeliveryMapScreen } from '@/apps/entregas/screens/DeliveryMapScreen';
 import { GestionEntregasScreen } from '@/apps/entregas/screens/GestionEntregasScreen';
 import { EstadoEntregaScreen } from '@/apps/entregas/screens/EstadoEntregaScreen';
 import RutaEntregaScreen from '@/apps/entregas/screens/RutaEntregaScreen';
+import { RutaMultiParadaScreen } from '@/apps/entregas/screens/RutaMultiParadaScreen';
 
 const Stack = createNativeStackNavigator<EntregasStackParamList>();
 
@@ -22,6 +23,11 @@ const EntregasNavigator: React.FC = () => {
         headerShown: false,
       }}
     >
+      <Stack.Screen
+        name="EntregasRutas"
+        component={EntregasRutasScreen}
+        options={{ title: 'Rutas' }}
+      />
       <Stack.Screen
         name="ClientesEntregas"
         component={ClientesEntregasScreen}
@@ -70,6 +76,11 @@ const EntregasNavigator: React.FC = () => {
       <Stack.Screen
         name="EntregaTracking"
         component={DeliveryMapScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="RutaMultiParada"
+        component={RutaMultiParadaScreen}
         options={{ headerShown: false }}
       />
     </Stack.Navigator>
